@@ -123,3 +123,9 @@ def source_files() -> list[Path]:  # Discover project sources without entering r
     return sources  # Share source discovery across compile, validation, and cleanup.
 
 
+def run_command(arguments: list[str]) -> None:  # Propagate subprocess failures without shell evaluation.
+    """Run a project command with the project root as its working directory."""
+
+    subprocess.run(arguments, cwd=ROOT, check=True)  # Preserve native exit status and interactive input.
+
+
