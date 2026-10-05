@@ -334,3 +334,37 @@ make run-single IMAGE="../1. General.jpg" COINS=5 STEPS=5000 DEBUG=1
 Single-mode collectible markers are **blue only**.
 
 No girlfriend/shared ownership statistics or legend entries are generated in this mode.
+
+### Couple Mode
+
+Automatic input discovery:
+
+```bash
+make run-couple STEPS=5000 MINIMUM=0
+```
+
+Debug:
+
+```bash
+make run-couple STEPS=5000 MINIMUM=0 DEBUG=1
+```
+
+Explicit screenshots:
+
+```bash
+make run-couple USER_IMAGE="../1. General.jpg" GIRLFRIEND_IMAGE="../6. Girlfriend General.jpeg" STEPS=5000 MINIMUM=0 DEBUG=1
+```
+
+Explicit CLI passthrough:
+
+```bash
+make run-couple ARGS="--user ../1. General.jpg --girlfriend ../6. Girlfriend General.jpeg --steps 5000 --minimum 0 --debug"
+```
+
+Couple-mode colors are:
+
+- **Blue:** user-only collectible.
+- **Pink:** girlfriend-only collectible.
+- **Green:** shared collectible.
+
+A shared physical collectible can use different artwork in each screenshot. Matching is based on aligned physical map position rather than icon identity.
