@@ -31,3 +31,8 @@ import numpy as np  # Represent image arrays.
 from numpy.typing import NDArray  # Annotate numerical arrays.
 
 
+ROOT = Path(__file__).resolve().parent  # Anchor runtime paths to the project.
+type Image = NDArray[np.uint8]  # Represent byte images.
+type Point = tuple[float, float]  # Store analysis coordinates.
+
+
