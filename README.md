@@ -125,3 +125,14 @@ The application does **not** require:
 - Separate profile-picture files.
 - Original development screenshots during normal runtime.
 - Manual collectible template input.
+
+## Setup
+
+### Clone the repository
+
+1. Clone the repository with the following command:
+
+   ```bash
+   git clone https://github.com/BrenoFariasdaSilva/MacadamRoutePlanner.git
+   cd MacadamRoutePlanner
+   ```
