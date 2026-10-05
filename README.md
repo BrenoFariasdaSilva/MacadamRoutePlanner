@@ -763,3 +763,25 @@ Its bounded beam search considers:
 Every partial route reserves enough distance to return HOME.
 
 Beam width is currently bounded to control computation, so couple optimization is heuristic rather than a proof of global reward optimality.
+
+### Image Interpretation
+
+Screenshots are normalized to width:
+
+```text
+800 px
+```
+
+while preserving aspect ratio.
+
+This is a processing resolution and not an assumed map scale.
+
+The application dynamically excludes non-map interface areas such as:
+
+- Status content.
+- Large panels.
+- Balance UI.
+- Promotional/navigation sections.
+- Floating controls.
+
+Neutral bright pixels are used to identify street corridors across the supplied visual themes.
