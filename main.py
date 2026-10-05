@@ -195,3 +195,73 @@ def parse_arguments() -> argparse.Namespace:  # Define executable CLI behavior.
     return arguments  # Return validated application inputs.
 
 
+def run_pipeline(arguments: argparse.Namespace, directory: Path) -> dict[str, Any]:  # Coordinate the modular processing stages.
+    """
+    Detect, optionally align accounts, route, and render the selected workflow.
+
+    :param arguments: Validated CLI inputs.
+    :param directory: New dedicated output directory.
+    :return: Complete validated route result.
+    """
+
+    settings = replace(Settings(), match_tolerance=arguments.match_tolerance)  # Apply explicit geometric tolerance.
+    inputs = (("single", arguments.image),) if arguments.mode == "single" else (("user", arguments.user), ("girlfriend", arguments.girlfriend))  # Select explicit account inputs.
+    scenes = [prepare_map(path, settings) for _, path in inputs]  # Prepare each screenshot independently.
+    debug = directory / "debug"  # Separate diagnostics from user-facing outputs.
+    if arguments.debug:  # Create diagnostic storage only on request.
+        debug.mkdir()  # Prepare the optional debug directory.
+    for label, scene in zip((label for label, _ in inputs), scenes, strict=True):  # Analyze each account independently.
+        detect_home(scene)  # Require a unique profile map marker.
+        detect_collectibles(scene, arguments.variants)  # Activate all configured collectible variants.
+        if VERBOSE:  # Report account-level detection evidence.
+            print(f"{label}: {scene.diagnostics}; HOME={scene.home}")  # Expose counts and rejection reasons.
+        if arguments.debug:  # Preserve preprocessing evidence before registration.
+            save_image(debug / f"{label}_usable.png", cv2.cvtColor(scene.usable, cv2.COLOR_GRAY2BGR))  # Save interface exclusions.
+            save_image(debug / f"{label}_observed_roads.png", cv2.cvtColor(scene.roads, cv2.COLOR_GRAY2BGR))  # Save directly observed streets.
+    first = scenes[0]  # Use the supplied screenshot as the output coordinate system.
+    roads = repair_roads(first)  # Reconstruct supported local road occlusions.
+    common = None  # Single mode retains its complete usable screenshot area.
+    if arguments.mode == "couple":  # Registration and road fusion belong only to couple mode.
+        second = scenes[1]  # Read the other account independently.
+        matrix, registration = register_maps(first, second, settings)  # Validate the existing shared coordinate system.
+        common = common_map_mask(first, second, matrix)  # Restrict the couple graph and pickups to mutually visible map coverage.
+        x, y = (int(round(value)) for value in first.home)  # Keep the user's independently detected HOME as the fixed route origin.
+        if not (0 <= x < common.shape[1] and 0 <= y < common.shape[0] and common[y, x]):  # Do not silently move HOME into an unrelated overlap component.
+            raise AnalysisError("Your HOME is outside the common visible map area; include your HOME in both map views")  # Explain the required screenshot coverage rather than demanding equal account positions.
+        registration.update(common_map_pixels=int(np.count_nonzero(common)), common_user_fraction=float(np.count_nonzero(common) / np.count_nonzero(first.usable)), routing_scope="common visible map", route_home_account="user")  # Report the supported routing footprint and start account.
+        if VERBOSE:  # Preserve quantitative alignment reporting.
+            print(f"Registration: {registration}")  # Report existing registration evidence.
+        warped = cv2.warpPerspective(repair_roads(second), matrix, (roads.shape[1], roads.shape[0]), flags=cv2.INTER_NEAREST)  # Align complementary streets.
+        roads = cv2.morphologyEx(cv2.bitwise_or(roads, warped), cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))  # Preserve couple fusion.
+        roads = cv2.bitwise_and(roads, common)  # Clip after fusion so morphological repair cannot grow outside common coverage.
+    graph, skeleton, graph_info = build_graph(roads, settings, arguments.meters_per_pixel)  # Extract metric topology.
+    home, home_distance = snap_point(graph, first.home, settings.snap_tolerance)  # Associate HOME with a supported street position.
+    graph = graph.subgraph(nx.node_connected_component(graph, home)).copy()  # Route only within the HOME-connected street network.
+    graph_info.update(home_snap_pixels=home_distance, home_component_nodes=len(graph))  # Preserve HOME connectivity evidence.
+    if arguments.mode == "single":  # Snap one account without registration or ownership matching.
+        records = [{"point": item.point, "kind": "user", "variants": [item.variant]} for item in first.detections]  # Reuse the existing blue marker category.
+        locations, rejected = snap_locations(records, graph, settings)  # Apply the same graph safety tolerance.
+        diagnostics = {"input": str(arguments.image.resolve()), "single": {**first.diagnostics, "home": first.home, "home_box": first.home_box}, "graph": graph_info, "rejected_locations": rejected}  # Omit cross-account diagnostics.
+    else:  # Preserve couple matching and output fields.
+        locations, rejected = match_locations(first, second, matrix, graph, settings, common)  # Match only opportunities inside shared map coverage.
+        if arguments.minimum and not locations:  # Preserve existing required-collectible rejection.
+            raise AnalysisError(f"No valid collectible candidates; rejected={rejected}")  # Report measurable detection failures.
+        diagnostics = {"user": first.diagnostics, "girlfriend": second.diagnostics, "registration": registration, "graph": graph_info, "rejected_locations": rejected, "cross_account_matches": sum(item["kind"] == "shared" for item in locations)}  # Preserve existing couple evidence.
+    if VERBOSE:  # Explain graph acceptance before optimization.
+        print(f"Graph: {graph_info}; locations={len(locations)}; rejected={len(rejected)}")  # Report routable coverage.
+    if arguments.debug:  # Save visual geometry before route search.
+        save_image(debug / "roads.png", cv2.cvtColor(roads, cv2.COLOR_GRAY2BGR))  # Save fused road evidence.
+        save_image(debug / "skeleton.png", cv2.cvtColor(skeleton, cv2.COLOR_GRAY2BGR))  # Save centerline geometry.
+        if arguments.mode == "couple":  # Do not invent registration evidence for a single account.
+            save_image(debug / "registered.png", cv2.warpPerspective(second.image, matrix, (roads.shape[1], roads.shape[0])))  # Save the aligned second screenshot.
+            save_image(debug / "common_map.png", cv2.cvtColor(common, cv2.COLOR_GRAY2BGR))  # Preserve the exact mask used by graph extraction and collectible matching.
+    if arguments.mode == "single":  # Select the explicit single-account objective policy.
+        result = optimize_single_route(graph, home, locations, arguments.coins, arguments.steps, settings)  # Optimize one account's physical pickups.
+        result.update(input=str(arguments.image.resolve()), collectibles_detected=len(first.detections), collectibles_reachable=len(locations))  # Preserve input and detection counts.
+    else:  # Keep existing couple optimization behavior.
+        result = optimize_route(graph, home, locations, arguments.steps, arguments.minimum, settings)  # Search within the hard return-HOME budget.
+    result["mode"] = arguments.mode  # Make output metadata explicit without renaming existing fields.
+    render_outputs(directory, first, graph, locations, result, diagnostics, common)  # Produce maps with the same supported coverage as routing.
+    return result  # Report final validated statistics to the CLI.
+
+
