@@ -205,3 +205,59 @@ Equivalent supported setup targets include:
 make setup
 make install
 ```
+
+## Usage
+
+### Execution Modes
+
+MacadamRoutePlanner has two explicit modes.
+
+#### Couple mode
+
+Use:
+
+```bash
+make run-couple
+```
+
+The existing:
+
+```bash
+make run
+```
+
+remains an alias for couple mode for backward compatibility.
+
+Couple mode:
+
+1. Processes one screenshot from each account.
+2. Detects each account independently.
+3. Aligns stable map content.
+4. Detects HOME and collectibles.
+5. Extracts the street network.
+6. Matches physical collectible locations across both accounts.
+7. Classifies collectibles as:
+   - User-only.
+   - Girlfriend-only.
+   - Shared.
+8. Generates a closed HOME-returning route.
+
+#### Single-account mode
+
+Use:
+
+```bash
+make run-single
+```
+
+Single mode:
+
+1. Processes one screenshot.
+2. Performs no cross-account registration.
+3. Detects HOME.
+4. Detects collectibles.
+5. Extracts the street graph.
+6. Snaps HOME and collectible sites to the graph.
+7. Optimizes a closed HOME-returning route.
+
+At least one of `COINS` or `STEPS` must be supplied.
