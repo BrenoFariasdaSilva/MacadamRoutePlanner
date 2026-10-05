@@ -849,3 +849,36 @@ Example:
 ```
 
 No routing rewrite is necessary for a newly configured collectible appearance.
+
+### Registration and Street Topology
+
+Couple mode registers the girlfriend screenshot into the user's coordinate system.
+
+The registration pipeline uses:
+
+- Stable feature masking.
+- Reciprocal SIFT descriptor matching.
+- Match ambiguity filtering.
+- USAC/MAGSAC robust homography estimation.
+- Independent residual validation.
+- Spatial coverage validation.
+- Scale validation.
+- Rotation/perspective validation.
+- HOME correspondence.
+- Street-correlation refinement.
+
+Dynamic content such as profile markers and collectibles is excluded from registration evidence where appropriate.
+
+The final homography maps girlfriend coordinates into user coordinates.
+
+Street processing performs:
+
+- Bright-road extraction.
+- Marker-border removal.
+- Conservative short-occlusion repair.
+- Skeletonization.
+- Weighted graph construction.
+- Tiny-fragment removal.
+- HOME-component selection.
+
+Graph edges follow detected street centerlines.
