@@ -1030,3 +1030,47 @@ Additionally, a `main.bib` file is available in the root directory of this repos
 If you find this repository valuable, please don't forget to give it a ⭐ to show your support!
 
 Contributions are highly encouraged, whether by creating issues for feedback or submitting pull requests to improve the project.
+
+## Contributing
+
+Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+
+For complete contribution guidelines, read the [CONTRIBUTING.md](CONTRIBUTING.md) file.
+
+1. **Set Up Your Environment**
+
+   Follow the [Setup](#setup) instructions.
+
+2. **Create a Branch**
+
+   ```bash
+   git checkout -b feature/YourFeatureName
+   ```
+
+3. **Implement and validate your changes**
+
+   ```bash
+   make compile
+   make validate
+   ```
+
+4. **Commit Your Changes**
+
+   Example conventional commits:
+
+   ```bash
+   git commit -m "feat: add some amazing feature"
+   git commit -m "fix: resolve route rendering issue"
+   git commit -m "docs: update usage documentation"
+   git commit -m "refactor: improve route optimization structure"
+   ```
+
+5. **Push Your Branch**
+
+   ```bash
+   git push origin feature/YourFeatureName
+   ```
+
+6. **Open a Pull Request**
+
+   Navigate to the repository on GitHub and create a pull request describing the changes.
