@@ -119,3 +119,49 @@ def navigation_points(graph: nx.Graph, walk: list[tuple[int, int]]) -> list[dict
     return events  # Share identical event numbers and anchors across both maps.
 
 
+def draw_numbers(canvas: Image, events: list[dict[str, Any]], scale: float, home: tuple[int, int]) -> None:  # Center compact badges on their actual navigation points.
+    """
+    Draw geographic navigation badges without leader lines.
+
+    :param canvas: Mutable output image.
+    :param events: Shared ordered navigation events.
+    :param scale: Analysis-to-canvas coordinate scale.
+    :param home: Original graph HOME coordinate.
+    :return: None.
+    """
+
+    font = max(LABEL_MIN_FONT_SCALE, LABEL_FONT_SCALE * scale)  # Adapt readable typography to image size.
+    thickness = max(2, round(2 * scale))  # Preserve bold high-contrast digits.
+    padding = max(3, round(LABEL_PADDING * scale))  # Keep the badge compact around measured text.
+    grouped = {}  # Show repeated visits at one geographic point instead of separating them into blocks.
+    for event in events:  # Preserve every meaningful visit number.
+        grouped.setdefault(event["point"], []).append(str(event["number"]))  # Group only identical route coordinates.
+    occupied = []  # Reserve only actual badge footprints for rare local collision handling.
+    home_bounds = [((home[0] - 14) * scale, (home[1] - 14) * scale, (home[0] + 14) * scale, (home[1] + 14) * scale), ((home[0] + 15) * scale, (home[1] - 32) * scale, (home[0] + 75) * scale, (home[1] - 8) * scale)]  # Protect the star and caption separately without reserving empty space.
+    for point, numbers in grouped.items():  # Draw one geographic badge per actual navigation location.
+        rows = ["/".join(numbers[index:index + 2]) for index in range(0, len(numbers), 2)]  # Keep repeated visits compact rather than forming a long horizontal label.
+        sizes = [cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font, thickness)[0] for text in rows]  # Measure each chronological row.
+        width = max(size[0] for size in sizes)  # Fit the widest row without shrinking digits.
+        line_height = max(size[1] for size in sizes)  # Keep uniform text spacing.
+        height = len(rows) * line_height + (len(rows) - 1) * padding  # Reserve separate readable rows for repeated visits.
+        half_width, half_height = width / 2 + padding, height / 2 + padding  # Keep a compact badge around the measured text.
+        anchor = np.asarray(point, dtype=float) * scale  # Start exactly at the shared geographic coordinate.
+        radius = min(LABEL_MAX_OFFSET * scale, np.hypot(half_width, half_height))  # Bound any unavoidable shift to one small badge radius.
+        candidates = [anchor] + [anchor + radius * np.asarray((np.cos(angle), np.sin(angle))) for angle in np.linspace(0, 2 * np.pi, 16, endpoint=False)]  # Consider only immediate neighbors of the actual corner.
+        ranked = []  # Prefer exact placement whenever no badge or HOME conflict exists.
+        for center in candidates:  # Keep collision handling local to the navigation point.
+            x, y = center  # Evaluate the candidate's complete badge footprint.
+            bounds = (x - half_width, y - half_height, x + half_width, y + half_height)  # Include text and padding in overlap measurements.
+            overlaps = [max(0, min(bounds[2], other[2]) - max(bounds[0], other[0])) * max(0, min(bounds[3], other[3]) - max(bounds[1], other[1])) for other in [*home_bounds, *occupied]]  # Protect HOME and previously placed readable numbers.
+            ranked.append(((sum(overlaps[:2]), sum(overlaps[2:]), float(np.linalg.norm(center - anchor))), center, bounds))  # Use geographic proximity before any background-text preference.
+        _, center, bounds = min(ranked, key=lambda candidate: candidate[0])  # Keep exact coordinates unless a real local collision requires a tiny shift.
+        occupied.append(bounds)  # Reserve the selected nearby badge footprint.
+        left, top, right, bottom = (int(round(value)) for value in bounds)  # Round only when drawing final output coordinates.
+        cv2.rectangle(canvas, (left, top), (right, bottom), LABEL_DARK, -1, cv2.LINE_AA)  # Cover only the immediate navigation point.
+        cv2.rectangle(canvas, (left, top), (right, bottom), LABEL_LIGHT, max(1, round(2 * scale)), cv2.LINE_AA)  # Separate badges from screenshot details.
+        for row, (text, size) in enumerate(zip(rows, sizes, strict=True)):  # Keep every repeated visit independently readable.
+            origin = (int(round(center[0] - size[0] / 2)), int(round(center[1] - height / 2 + line_height + row * (line_height + padding))))  # Center each row within the same geographic badge.
+            cv2.putText(canvas, text, origin, cv2.FONT_HERSHEY_SIMPLEX, font, LABEL_LIGHT, thickness, cv2.LINE_AA)  # Draw high-contrast navigation numbers without leader lines.
+
+
+
