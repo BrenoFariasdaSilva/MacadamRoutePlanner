@@ -599,3 +599,73 @@ python main.py --help
 ```
 
 for complete parameter descriptions.
+
+## Results
+
+### Generated Outputs
+
+Successful runs are written under:
+
+```text
+Outputs/run-*/
+```
+
+Each run produces:
+
+#### `overlay.png`
+
+Contains:
+
+- Route drawn on the original screenshot.
+- Selected collectible markers.
+- HOME.
+- Route arrows.
+- Sequential navigation numbers.
+- Statistics.
+
+Navigation numbers correspond to meaningful route corners, turns, intersections, or turnaround points.
+
+Repeated visits can share one badge, for example:
+
+```text
+10/16
+```
+
+Leader lines are not used for normal route numbering.
+
+#### `clean_map.png`
+
+Contains:
+
+- Simplified detected street graph.
+- HOME.
+- Selected route.
+- Route direction/order.
+- Collectible markers.
+- Route statistics.
+
+#### `route.json`
+
+Contains structured routing and diagnostic information including:
+
+- Execution mode.
+- Ordered graph-node walk.
+- Selected collectible sites.
+- Distance.
+- Estimated steps.
+- Repeated walking.
+- Constraint satisfaction.
+- Navigation points.
+- Detection evidence.
+- Graph statistics.
+- Registration information in couple mode.
+- Rejected candidates.
+- Unmet requirements when applicable.
+
+Rejected image-analysis runs write:
+
+```text
+failure.json
+```
+
+rather than claiming a valid route.
