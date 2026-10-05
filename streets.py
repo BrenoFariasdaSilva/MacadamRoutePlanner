@@ -62,3 +62,29 @@ def repair_roads(scene: MapImage) -> Image:  # Bridge only short supported occlu
     return cv2.bitwise_and(roads, scene.usable)  # Preserve strict interface exclusion.
 
 
+def thin_mask(mask: Image) -> Image:  # Avoid an extra image-processing dependency.
+    """
+    Thin a binary road mask using topology-preserving Zhang-Suen iterations.
+
+    :param mask: Binary street corridor mask.
+    :return: One-pixel street skeleton.
+    """
+
+    pixels = np.pad(mask > 0, 1).astype(np.uint8)  # Protect image boundaries during neighborhood operations.
+    changed = True  # Iterate until skeleton topology stabilizes.
+    while changed:  # Remove boundary pixels without breaking connectivity.
+        changed = False  # Track deletions in both thinning phases.
+        for phase in (0, 1):  # Apply alternating directional constraints.
+            center = pixels[1:-1, 1:-1]  # Reference current foreground pixels.
+            neighbors = [pixels[:-2, 1:-1], pixels[:-2, 2:], pixels[1:-1, 2:], pixels[2:, 2:], pixels[2:, 1:-1], pixels[2:, :-2], pixels[1:-1, :-2], pixels[:-2, :-2]]  # Read clockwise neighbors.
+            count = sum(neighbors)  # Count occupied neighbors.
+            transitions = sum((neighbors[index] == 0) & (neighbors[(index + 1) % 8] == 1) for index in range(8))  # Count contour transitions.
+            north, east, south, west = neighbors[0], neighbors[2], neighbors[4], neighbors[6]  # Name orthogonal neighbors.
+            guard = ((north * east * south == 0) & (east * south * west == 0)) if phase == 0 else ((north * east * west == 0) & (north * south * west == 0))  # Preserve directional connectivity.
+            remove = (center == 1) & (count >= 2) & (count <= 6) & (transitions == 1) & guard  # Identify safely removable boundary pixels.
+            if np.any(remove):  # Continue only when pixels were removed.
+                center[remove] = 0  # Thin the current boundary.
+                changed = True  # Request another stabilization pass.
+    return pixels[1:-1, 1:-1] * 255  # Return unpadded binary skeleton.
+
+
