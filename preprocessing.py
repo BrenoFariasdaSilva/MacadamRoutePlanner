@@ -97,3 +97,22 @@ def panel_mask(image: Image, white: Image) -> Image:  # Identify overlay geometr
     return usable  # Return the dynamically excluded map.
 
 
+def prepare_map(path: Path, settings: Settings) -> MapImage:  # Prepare one account independently.
+    """
+    Load, normalize, and segment a screenshot.
+
+    :param path: Source screenshot path.
+    :param settings: Shared analysis configuration.
+    :return: Prepared map image and diagnostic masks.
+    """
+
+    original = read_image(path)  # Preserve source resolution.
+    height = round(original.shape[0] * settings.width / original.shape[1])  # Preserve aspect ratio.
+    image = cv2.resize(original, (settings.width, height), interpolation=cv2.INTER_AREA)  # Normalize analysis scale.
+    white = neutral_mask(image, settings)  # Detect neutral road and interface pixels.
+    usable = panel_mask(image, white)  # Exclude interface components.
+    roads = cv2.bitwise_and(white, usable)  # Limit roads to the usable map.
+    fraction = float(np.count_nonzero(usable) / usable.size)  # Quantify available coverage.
+    if fraction < 0.15 or np.count_nonzero(roads) < usable.size * 0.01:  # Reject insufficient visible streets.
+        raise AnalysisError(f"Unusable map region: usable fraction={fraction:.3f}")  # Report a measurable failure.
+    return MapImage(image, usable, roads, original, diagnostics={"usable_fraction": fraction})  # Retain preprocessing evidence.
