@@ -908,3 +908,27 @@ If the original screenshot has width `W` and its known original-pixel scale is `
 ```text
 S * W / 800
 ```
+
+### Limitations
+
+MacadamRoutePlanner operates from screenshot evidence rather than geographic/GPS road data.
+
+Therefore it cannot establish:
+
+- Real sidewalk availability.
+- Crossing legality.
+- Construction.
+- Private roads.
+- Real-world road safety.
+- Precise surveyed distance.
+
+Other limitations include:
+
+- Major screenshot occlusions can disconnect the extracted street graph.
+- New Macadam UI layouts may require threshold/configuration adjustment.
+- Extreme collectible-size changes may require a new template configuration.
+- Unusual HOME marker appearances can be rejected.
+- Calibration remains approximate unless an independent metric scale is supplied.
+- Single-account exact collectible-state search can grow exponentially.
+- Couple-mode beam search does not guarantee a mathematical global optimum.
+- Windows Make execution has been validated; Unix execution follows the same project workflow but may not have received equivalent runtime validation.
