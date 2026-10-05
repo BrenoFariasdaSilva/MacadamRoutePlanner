@@ -51,3 +51,11 @@ class Settings:  # Centralize documented analysis assumptions.
     beam_width: int = 256  # Bound the deterministic route search.
 
 
+@dataclass  # Preserve detector evidence alongside geometry.
+class Detection:  # Describe one image-local collectible.
+    point: Point  # Use the visual map anchor.
+    box: tuple[int, int, int, int]  # Retain the icon bounds.
+    variant: str  # Preserve the configured visual identity.
+    confidence: float  # Record template similarity.
+
+
