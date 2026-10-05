@@ -156,3 +156,52 @@ make install
 The setup process creates the project virtual environment when necessary and installs the dependencies from `requirements.txt`.
 
 No manual virtual-environment activation is required for normal Makefile usage.
+
+## Run Python Code
+
+The Makefile is the primary user interface.
+
+For help:
+
+```bash
+make help
+```
+
+For couple mode:
+
+```bash
+make run-couple STEPS=5000 MINIMUM=0
+```
+
+For single-account mode:
+
+```bash
+make run-single COINS=5
+```
+
+or:
+
+```bash
+make run-single STEPS=5000
+```
+
+or:
+
+```bash
+make run-single COINS=5 STEPS=5000
+```
+
+### Dependencies
+
+Install or update the project dependencies with:
+
+```bash
+make dependencies
+```
+
+Equivalent supported setup targets include:
+
+```bash
+make setup
+make install
+```
