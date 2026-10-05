@@ -32,3 +32,17 @@ from detection import stable_mask  # Exclude dynamic map artwork.
 from settings import AnalysisError, Image, MapImage, Point, Settings  # Share analysis contracts.
 
 
+def transform_points(points: list[Point], matrix: NDArray[np.float64]) -> NDArray[np.float64]:  # Share projective point mapping.
+    """
+    Transform coordinates into the first screenshot's normalized map.
+
+    :param points: Source map coordinates.
+    :param matrix: Source-to-destination homography.
+    :return: Transformed coordinate array.
+    """
+
+    if not points:  # Preserve an empty detection set.
+        return np.empty((0, 2), dtype=np.float64)  # Return a consistently shaped array.
+    return cv2.perspectiveTransform(np.asarray(points, dtype=np.float64).reshape(-1, 1, 2), matrix).reshape(-1, 2)  # Apply homogeneous projection.
+
+
