@@ -1,6 +1,6 @@
 <div align="center">
   
-# [MacadamRoutePlanner](https://github.com/BrenoFariasdaSilva/Template-Project) <img src="https://github.com/BrenoFariasdaSilva/Template-Project/blob/d4173c3b2249a77b6b1a223b86e801ea2042eddc/.assets/Icons/GitHub%20Colored%20Icon.svg"  width="3%" height="3%">
+# [MacadamRoutePlanner](https://github.com/BrenoFariasdaSilva/MacadamRoutePlanner) <img src="https://github.com/BrenoFariasdaSilva/MacadamRoutePlanner/blob/d4173c3b2249a77b6b1a223b86e801ea2042eddc/.assets/Icons/GitHub%20Colored%20Icon.svg"  width="3%" height="3%">
 
 </div>
 
@@ -16,15 +16,15 @@ Project-Description.
 
 <div align="center">
 
-![GitHub Code Size in Bytes](https://img.shields.io/github/languages/code-size/BrenoFariasdaSilva/Template-Project)
-![GitHub Commits](https://img.shields.io/github/commit-activity/t/BrenoFariasdaSilva/Template-Project/main)
-![GitHub Last Commit](https://img.shields.io/github/last-commit/BrenoFariasdaSilva/Template-Project)
-![GitHub Forks](https://img.shields.io/github/forks/BrenoFariasdaSilva/Template-Project)
-![GitHub Language Count](https://img.shields.io/github/languages/count/BrenoFariasdaSilva/Template-Project)
-![GitHub License](https://img.shields.io/github/license/BrenoFariasdaSilva/Template-Project)
-![GitHub Stars](https://img.shields.io/github/stars/BrenoFariasdaSilva/Template-Project)
-![GitHub Contributors](https://img.shields.io/github/contributors/BrenoFariasdaSilva/Template-Project)
-![GitHub Created At](https://img.shields.io/github/created-at/BrenoFariasdaSilva/Template-Project)
+![GitHub Code Size in Bytes](https://img.shields.io/github/languages/code-size/BrenoFariasdaSilva/MacadamRoutePlanner)
+![GitHub Commits](https://img.shields.io/github/commit-activity/t/BrenoFariasdaSilva/MacadamRoutePlanner/main)
+![GitHub Last Commit](https://img.shields.io/github/last-commit/BrenoFariasdaSilva/MacadamRoutePlanner)
+![GitHub Forks](https://img.shields.io/github/forks/BrenoFariasdaSilva/MacadamRoutePlanner)
+![GitHub Language Count](https://img.shields.io/github/languages/count/BrenoFariasdaSilva/MacadamRoutePlanner)
+![GitHub License](https://img.shields.io/github/license/BrenoFariasdaSilva/MacadamRoutePlanner)
+![GitHub Stars](https://img.shields.io/github/stars/BrenoFariasdaSilva/MacadamRoutePlanner)
+![GitHub Contributors](https://img.shields.io/github/contributors/BrenoFariasdaSilva/MacadamRoutePlanner)
+![GitHub Created At](https://img.shields.io/github/created-at/BrenoFariasdaSilva/MacadamRoutePlanner)
 ![wakatime](https://wakatime.com/badge/github/BrenoFariasdaSilva/MacadamRoutePlannersvg)
 
 </div>
@@ -72,7 +72,7 @@ Bullet points of the requirements.
 
    ```bash
    git clone https://github.com/BrenoFariasdaSilva/MacadamRoutePlannergit
-   cd Template-Project
+   cd MacadamRoutePlanner
    ```
 
 ## Installation:
@@ -112,7 +112,7 @@ Bullet points of the requirements.
 
 ### Dataset - Optional
 
-1. Download the dataset from [WEBSITE-HERE]() and place it in this project directory `(/Template-Project)` and run the following command:
+1. Download the dataset from [WEBSITE-HERE]() and place it in this project directory `(/MacadamRoutePlanner)` and run the following command:
 
    ```bash
    make dataset
