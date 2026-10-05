@@ -35,3 +35,18 @@ from settings import AnalysisError, Image, MapImage, Settings  # Reuse account r
 from streets import snap_point  # Associate collectibles with streets.
 
 
+def snap_locations(records: list[dict[str, Any]], graph: nx.Graph, settings: Settings) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:  # Share graph safety across both account modes.
+    """Snap detected physical sites to HOME-connected streets and retain rejection evidence."""
+
+    accepted, rejected = [], []  # Separate routable sites from unsupported ones.
+    for record in records:  # Require physical street context.
+        try:  # Snap only to the HOME-connected topology.
+            node, distance = snap_point(graph, record["point"], settings.snap_tolerance)  # Enforce geometric tolerance.
+        except AnalysisError as error:  # Preserve explicit off-graph rejection evidence.
+            rejected.append({**record, "reason": str(error)})  # Report unsupported physical locations.
+            continue  # Exclude unreachable sites from the optimizer.
+        record.update(node=node, snap_pixels=distance, reward=2 if record["kind"] == "shared" else 1)  # Count opportunities per account.
+        accepted.append(record)  # Retain a routable collectible site.
+    return sorted(accepted, key=lambda item: (item["node"], item["kind"])), rejected  # Ensure deterministic candidate ordering.
+
+
