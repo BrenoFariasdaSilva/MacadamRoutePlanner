@@ -64,3 +64,58 @@ def save_image(path: Path, image: Image) -> None:  # Write Unicode output paths 
         raise AnalysisError(f"Output verification failed: {path}")  # Report an unusable generated image.
 
 
+def navigation_points(graph: nx.Graph, walk: list[tuple[int, int]]) -> list[dict[str, Any]]:  # Derive annotations without modifying the optimized walk.
+    """
+    Select significant corners and reversals in traversal order.
+
+    :param graph: Actual routed street graph.
+    :param walk: Complete ordered graph-node walk.
+    :return: Navigation events with exact route indices and coordinates.
+    """
+
+    points = np.asarray(walk, dtype=np.int32)  # Keep original graph coordinates for every annotation.
+    reversals = {index for index in range(1, len(walk) - 1) if walk[index - 1] == walk[index + 1]}  # Preserve actual turnaround stops.
+    boundaries = sorted({0, len(walk) - 1, *reversals, *(index for index, point in enumerate(walk) if point == walk[0])})  # Split at reversals and HOME visits before simplifying annotations.
+    splits = [start + int(np.argmax(np.linalg.norm(points[start:end + 1] - points[start], axis=1))) for start, end in zip(boundaries, boundaries[1:]) if walk[start] == walk[end]]  # Open closed loops at a routed point so simplification cannot rotate traversal order.
+    boundaries = sorted(set(boundaries + splits))  # Preserve every original route boundary.
+    vertices = [0]  # Retain ordered route indices instead of only simplified coordinates.
+    corners = set(reversals)  # Keep turnarounds even when the outbound and return streets coincide.
+    for start, end in zip(boundaries, boundaries[1:]):  # Analyze each uninterrupted traversal separately.
+        simplified = cv2.approxPolyDP(points[start:end + 1], NAVIGATION_TOLERANCE, False).reshape(-1, 2)  # Suppress skeleton jitter without changing the rendered path.
+        cursor = start  # Resolve repeated coordinates in their actual traversal order.
+        for point in simplified[1:]:  # Resolve simplified vertices without inventing route coordinates.
+            index = cursor + int(np.flatnonzero(np.all(points[cursor:end + 1] == point, axis=1))[0])  # Recover the exact occurrence in the original route.
+            cursor = index + 1  # Keep subsequent corner lookup ordered.
+            vertices.append(index)  # Include split boundaries so their heading changes are evaluated too.
+    for previous, index, following in zip(vertices, vertices[1:], vertices[2:]):  # Inspect geometric corners across the complete traversal.
+        incoming, outgoing = points[index] - points[previous], points[following] - points[index]  # Measure headings across complete straight sections.
+        angle = np.degrees(np.arctan2(abs(float(incoming[0] * outgoing[1] - incoming[1] * outgoing[0])), float(np.dot(incoming, outgoing))))  # Distinguish substantial turns from shallow centerline bends.
+        if angle >= NAVIGATION_ANGLE:  # Number only meaningful direction changes.
+            corners.add(index)  # Retain the route event independently of image layout.
+    events = []  # Build one shared annotation sequence for both outputs.
+    for index in sorted(corners):  # Preserve the full navigation order including repeated visits.
+        if walk[index] == walk[0]:  # Let the existing HOME annotation identify start and return.
+            continue  # Avoid redundant numbered HOME badges.
+        if index not in reversals and any(abs(index - reverse) <= NAVIGATION_SPUR for reverse in reversals):  # Combine a tiny spur's entrance and exit with its turnaround stop.
+            continue  # Avoid three overlapping instructions for one short collectible excursion.
+        nearby = range(max(1, index - NAVIGATION_TOLERANCE), min(len(walk) - 1, index + NAVIGATION_TOLERANCE + 1))  # Limit junction refinement to this local route passage.
+        junctions = [position for position in nearby if graph.degree[walk[position]] >= 3]  # Prefer an actual street junction over a nearby rounded corner pixel.
+        if index not in reversals and junctions:  # Keep collectible turnaround coordinates exact.
+            index = min(junctions, key=lambda position: (abs(position - index), walk[position]))  # Use the closest traversed junction node.
+        for event in events:  # Unify repeated visits to the same small junction footprint.
+            if index not in reversals and np.linalg.norm(points[index] - event["point"]) <= NAVIGATION_TOLERANCE:  # Identify the same geographic corner without moving a turnaround stop.
+                matches = [position for position in nearby if walk[position] == event["point"]]  # Require the shared anchor to belong to this route passage too.
+                if not matches and event["kind"] == "turn":  # Adjacent junction pixels can differ between street approaches.
+                    earlier = range(max(1, event["route_index"] - NAVIGATION_TOLERANCE), min(len(walk) - 1, event["route_index"] + NAVIGATION_TOLERANCE + 1))  # Restrict grouping to the original local passage.
+                    shared = set(walk[position] for position in earlier).intersection(walk[position] for position in nearby)  # Require an exact node traversed on both visits.
+                    if shared:  # Never merge neighboring streets without shared route geometry.
+                        anchor = min(shared, key=lambda point: (graph.degree[point] < 3, np.linalg.norm(np.subtract(point, event["point"])) + np.linalg.norm(points[index] - point), point))  # Prefer the common junction nearest both events.
+                        event.update(point=anchor, route_index=min((position for position in earlier if walk[position] == anchor), key=lambda position: abs(position - event["route_index"])))  # Keep the earlier event on its actual route passage.
+                        matches = [position for position in nearby if walk[position] == anchor]  # Attach the repeated visit to that same graph coordinate.
+                if matches:  # Preserve exact graph association on every visit.
+                    index = min(matches, key=lambda position: abs(position - index))  # Reuse the actual common intersection pixel.
+                    break  # Stop after finding this junction's existing coordinate.
+        events.append({"number": len(events) + 1, "route_index": index, "point": walk[index], "kind": "turnaround" if index in reversals else "turn"})  # Retain auditable navigation semantics.
+    return events  # Share identical event numbers and anchors across both maps.
+
+
