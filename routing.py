@@ -222,3 +222,93 @@ def extend_distance(graph: nx.Graph, walk: list[tuple[int, int]], home: tuple[in
     return walk  # Preserve closed-loop geometry.
 
 
+def optimize_single_route(graph: nx.Graph, home: tuple[int, int], locations: list[dict[str, Any]], coins: int | None, steps: int | None, settings: Settings) -> dict[str, Any]:  # Separate single-account objective priorities explicitly.
+    """
+    Find minimum-distance pickup loops or maximum pickups under a hard cap.
+
+    Exact distance-state search proves pickup feasibility on the extracted graph.
+    Target-distance refinement reuses bounded street cycles and HOME excursions.
+    Its secondary proximity/repetition preference does not claim global optimality.
+    """
+
+    target = math.ceil(steps / 1.3) if steps is not None else None  # Never invent a coins-only budget.
+    lower, upper = (target * 0.95, target * 1.05) if target is not None else (None, None)  # Preserve existing step conversion.
+    terminals = list(dict.fromkeys([home] + [item["node"] for item in locations]))  # Share the existing metric-closure representation.
+    distances, paths = {}, {}  # Cache real weighted graph paths.
+    for node in terminals:  # Solve each distinct collectible source once.
+        distances[node], paths[node] = nx.single_source_dijkstra(graph, node, weight="weight")  # Use actual street distances.
+    masks = {}  # Include incidental pickups on every leg.
+    for source in terminals:  # Inspect all source and destination pairs.
+        for destination in terminals:  # Include HOME-return pickups too.
+            visited = set(paths[source][destination])  # Resolve each exact street leg.
+            masks[source, destination] = sum(1 << index for index, item in enumerate(locations) if item["node"] in visited)  # Deduplicate collectible visits.
+    initial = (masks[home, home], home)  # Include collectibles snapped directly to HOME.
+    best = {initial: (0.0, (home,))}  # Retain minimum cost and deterministic stop order for each state.
+    queue = [(0.0, (home,), initial[0])]  # Explore partial routes in nondecreasing actual distance.
+    completed = []  # Retain closed candidates for the selected explicit objective.
+    required = min(coins or 0, len(locations))  # Return the best available alternative when the requested count is impossible.
+    shortest = math.inf  # Coins-only obtains its bound from a real satisfying route.
+    maximum = -1  # Track the exact best count achievable under the cap.
+    while queue:  # Exhaust eligible states without a reward-biased beam truncation.
+        cost, stops, mask = heapq.heappop(queue)  # Prefer shorter routes and deterministic stop order.
+        last = stops[-1]  # Read the current terminal.
+        if best.get((mask, last)) != (cost, stops):  # Ignore superseded state entries.
+            continue  # Expand only the best version of each state.
+        if upper is None and cost > shortest:  # All remaining paths already exceed a satisfying closed route.
+            break  # Prove minimum distance without an artificial step limit.
+        total = cost + distances[last][home]  # Reserve the complete HOME return.
+        closed_mask = mask | masks[last, home]  # Count return-leg pickups once.
+        count = closed_mask.bit_count()  # Single-account rewards are physical collectibles.
+        if upper is None:  # Coins-only prioritizes minimum walking after meeting the count.
+            if count >= required and total <= shortest:  # Keep only minimum-distance satisfying alternatives.
+                if total < shortest:  # Replace longer candidates immediately.
+                    completed = []  # Retain no unnecessary extra walking.
+                shortest = total  # Bound further search using a demonstrated route.
+                completed.append((total, stops + (home,), count))  # Preserve deterministic equal-distance alternatives.
+        elif total <= upper and count >= maximum:  # Steps and combined modes maximize pickups inside the hard cap.
+            if count > maximum:  # A larger count outranks target proximity and efficiency.
+                completed = []  # Discard lower-reward alternatives.
+            maximum = count  # Preserve the proven best reward count.
+            completed.append((total, stops + (home,), count))  # Retain target-refinement candidates.
+        for node in terminals[1:]:  # Every extension must add at least one new pickup.
+            new_mask = mask | masks[last, node]  # Include all traversed collectible nodes.
+            if new_mask == mask:  # Rewardless legs can be replaced by shortest paths during minimum-distance search.
+                continue  # Leave target padding to the separate refinement phase.
+            new_cost = cost + distances[last][node]  # Measure the actual metric-closure leg.
+            bound = upper if upper is not None else shortest  # Use only a supplied cap or a real incumbent distance.
+            if new_cost + distances[node][home] > bound:  # Reserve mandatory return before accepting a state.
+                continue  # Never exceed the hard budget to meet a coin count.
+            key, candidate = (new_mask, node), (new_cost, stops + (node,))  # Identify an equivalent position and pickup set.
+            if key not in best or candidate < best[key]:  # Shorter equivalent states preserve exact pickup feasibility.
+                best[key] = candidate  # Keep deterministic equal-distance ordering.
+                heapq.heappush(queue, (*candidate, new_mask))  # Continue the exact distance search.
+    ranked = sorted(completed, key=lambda item: (item[0], item[1])) if target is None else sorted(completed, key=lambda item: (abs(item[0] - target), item[1]))[:settings.beam_width]  # ponytail: bound secondary target refinement to beam_width; exhaustive refinement if global proximity is required.
+    options = []  # Compare fully expanded valid walks with actual route metrics.
+    for _, stops, _ in ranked:  # Expand the selected objective's eligible candidates.
+        walk = [home]  # Start every route at HOME.
+        for a, b in zip(stops, stops[1:]):  # Resolve ordered metric-closure legs.
+            walk.extend(paths[a][b][1:])  # Preserve every actual street transition.
+        alternatives = [walk]  # Retain the original route if a distance extension is worse.
+        if target is not None:  # Coins-only never receives distance padding.
+            alternatives.append(extend_distance(graph, walk, home, target, upper, target))  # Seek the target rather than stopping merely at its lower bound.
+        for candidate in alternatives:  # Compare actual reward and distance after refinement.
+            distance = route_length(graph, candidate)  # Recompute complete walking length.
+            if upper is not None and distance > upper + 1e-7:  # Enforce the final hard cap independently.
+                raise AnalysisError("Single route exceeded its reserved HOME-return budget")  # Reject any invariant violation.
+            visited = set(candidate)  # Count physical visits once.
+            selected = [index for index, item in enumerate(locations) if item["node"] in visited]  # Include incidental extension pickups.
+            edges = {frozenset((a, b)) for a, b in zip(candidate, candidate[1:])}  # Deduplicate traversed streets.
+            repeated = distance - sum(graph[a][b]["weight"] for edge in edges for a, b in [tuple(edge)])  # Measure repeated walking consistently.
+            score = (distance, tuple(candidate)) if target is None else (-len(selected), abs(distance - target), repeated, tuple(candidate))  # Make each objective hierarchy explicit.
+            options.append((score, candidate, selected, distance, repeated))  # Compare fully validated routes.
+    _, walk, selected, distance, repeated = min(options, key=lambda item: item[0])  # Choose deterministically under the selected policy.
+    if walk[0] != home or walk[-1] != home:  # Guard the fixed start and finish requirement.
+        raise AnalysisError("Single route did not return HOME")  # Refuse partial routes.
+    unmet = []  # Distinguish hard constraints from preferred target range.
+    if coins is not None and len(selected) < coins:  # Exact pickup search supports a genuine infeasibility report.
+        unmet.append(f"Coin requirement infeasible: requested {coins}; reachable {len(locations)}; maximum collectible count under step cap {upper:.2f} m is {maximum}" if upper is not None else f"Coin requirement infeasible: requested {coins}; only {len(locations)} reachable collectibles")  # Include the actual failing constraint.
+    if lower is not None and distance < lower:  # Report preference shortfalls without pretending budget infeasibility.
+        unmet.append(f"Distance below preferred lower bound {lower:.2f} m; target refinement found {distance:.2f} m")  # State the refinement limitation honestly.
+    if len(walk) == 1 and not selected:  # Preserve a truthful stationary alternative if nothing fits.
+        unmet.append("No nonempty HOME-returning route selected within the requested constraints")  # Do not invent walking or pickups.
+    return {"mode": "single", "requested_coins": coins, "requested_steps": steps, "walk": walk, "selected": selected, "distance_m": distance, "estimated_steps": math.ceil(distance * 1.3), "target_m": target, "lower_m": lower, "upper_m": upper, "collectibles_collected": len(selected), "distinct_locations": len(selected), "route_nodes": len(set(walk)), "intersections": sum(graph.degree[node] >= 3 for node in set(walk)), "repeated_distance_m": repeated, "constraints_satisfied": not unmet, "coin_requirement_satisfied": coins is None or len(selected) >= coins, "upper_bound_satisfied": upper is None or distance <= upper + 1e-7, "unmet": unmet, "optimizer": "exact minimum-distance pickup-state search; bounded secondary target-distance refinement"}  # Omit misleading couple-specific counts.
