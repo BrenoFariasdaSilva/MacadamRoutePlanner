@@ -71,3 +71,27 @@ VERBOSE = False  # Keep diagnostic output opt-in.
 SOUND_FILE = ROOT / ".assets/Sounds/NotificationSound.wav"  # Reuse the template asset.
 
 
+def discover_images(directory: Path) -> list[Path]:  # Select two screenshots without changing source files.
+    """
+    Discover readable screenshots without assigning account roles.
+
+    :param directory: Project-local screenshot input directory.
+    :return: Deterministically ordered readable screenshot paths.
+    """
+
+    files = []  # Collect only supported top-level screenshot images.
+    for path in sorted(directory.iterdir(), key=lambda item: (item.name.casefold(), item.name)) if directory.is_dir() else []:  # Keep candidate presentation deterministic.
+        attributes = getattr(path.stat(), "st_file_attributes", 0)  # Read native hidden and system attributes.
+        if not path.is_file() or path.name.startswith(".") or attributes & (stat.FILE_ATTRIBUTE_HIDDEN | stat.FILE_ATTRIBUTE_SYSTEM):  # Exclude hidden and system entries.
+            continue  # Leave all source entries untouched.
+        if path.suffix.lower() not in {".png", ".jpg", ".jpeg"} or path.stem.lower() in {"overlay", "clean_map", "registered", "roads", "skeleton"} or path.stem.lower().endswith(("_usable", "_observed_roads")):  # Exclude unsupported files and known generated artifacts.
+            continue  # Inspect another input entry.
+        try:  # Ignore files that merely have an image extension.
+            image = cv2.imdecode(np.fromfile(path, dtype=np.uint8), cv2.IMREAD_COLOR)  # Verify that the screenshot can be decoded.
+        except (OSError, cv2.error):  # Ignore unreadable or empty candidate images.
+            image = None  # Exclude the invalid candidate.
+        if image is not None:  # Retain only actual image files.
+            files.append(path)  # Preserve deterministic candidate ordering.
+    return files  # Share deterministic image discovery across explicit modes.
+
+
