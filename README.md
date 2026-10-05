@@ -958,3 +958,55 @@ make validate
 Unavailable optional static-analysis tools are explicitly reported rather than falsely claimed as successful.
 
 Validation does not require the numbered development screenshots.
+
+## Project Structure
+
+Main files and responsibilities:
+
+| File | Responsibility |
+| --- | --- |
+| `main.py` | CLI, execution-mode selection, prompts, Logger lifecycle, main pipeline, timing and optional sound |
+| `settings.py` | Typed records, project paths, geometric tolerances and analysis exceptions |
+| `preprocessing.py` | Image loading, normalization and dynamic UI/map masking |
+| `detection.py` | HOME detection, collectible manifest validation, template detection and stable registration masks |
+| `registration.py` | Reciprocal SIFT matching, robust homography estimation, validation and street refinement |
+| `streets.py` | Road extraction, local occlusion repair, skeletonization, graph construction, calibration and snapping |
+| `routing.py` | Single/couple route optimization, shortest paths, collectible matching and closed-route validation |
+| `rendering.py` | Overlay, clean map, navigation numbering, collectible colors, statistics and JSON |
+| `project_tasks.py` | Portable Makefile setup, validation, cleanup and execution orchestration |
+| `Makefile` | Primary project interface |
+| `requirements.txt` | Runtime dependencies |
+| `.gitignore` | Runtime/output/input/environment exclusions |
+| `.assets/Collectibles/variants.json` | Active collectible definitions and template settings |
+| `.assets/Collectibles/mushroom.png` | Mushroom collectible template |
+| `.assets/Collectibles/m_coin.png` | Standard Macadam coin template |
+
+Runtime asset structure:
+
+```text
+.assets/
+├── Collectibles/
+│   ├── mushroom.png
+│   ├── m_coin.png
+│   └── variants.json
+├── Icons/
+└── Sounds/
+```
+
+Input/output structure:
+
+```text
+Inputs/
+├── .gitkeep
+└── Single/
+    └── .gitkeep
+
+Outputs/
+└── run-*/
+    ├── overlay.png
+    ├── clean_map.png
+    ├── route.json
+    └── debug/
+```
+
+Personal screenshots, generated Outputs, Logs, virtual environments, Python caches and other runtime files are ignored by Git.
