@@ -113,3 +113,13 @@ Single debug masks/roads/skeleton omit registration; HOME/detections appear in J
 """  # Keep help identical across shells and platforms.
 
 
+def source_files() -> list[Path]:  # Discover project sources without entering runtime directories.
+    """Return source modules eligible for compilation and bounded cleanup."""
+
+    sources = []  # Retain deterministic source paths.
+    for directory, folders, files in os.walk(ROOT, followlinks=False):  # Avoid following directory links outside the project.
+        folders[:] = sorted(name for name in folders if name not in EXCLUDED and not (Path(directory) / name).is_symlink())  # Prune protected trees before recursion.
+        sources.extend(Path(directory) / name for name in sorted(files) if name.endswith(".py") and not (Path(directory) / name).is_symlink())  # Include all real project Python modules.
+    return sources  # Share source discovery across compile, validation, and cleanup.
+
+
