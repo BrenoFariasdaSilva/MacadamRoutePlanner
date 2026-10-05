@@ -165,3 +165,40 @@ def draw_numbers(canvas: Image, events: list[dict[str, Any]], scale: float, home
 
 
 
+def draw_route(canvas: Image, graph: nx.Graph, result: dict[str, Any], locations: list[dict[str, Any]], scale: float, events: list[dict[str, Any]]) -> None:  # Draw traversal on an existing coordinate-aligned canvas.
+    """
+    Draw the complete street route with ordered direction markers.
+
+    :param canvas: Mutable image canvas.
+    :param graph: Street graph for direction-arrow spacing.
+    :param result: Validated route result.
+    :param locations: Classified collectible sites.
+    :param scale: Analysis-to-canvas coordinate scale.
+    :param events: Shared navigation points selected from the original route.
+    :return: None.
+    """
+
+    walk = result["walk"]  # Read every graph transition in order.
+    points = np.rint(np.asarray(walk) * scale).astype(np.int32)  # Preserve alignment at output resolution.
+    cv2.polylines(canvas, [points], False, (255, 255, 255), max(5, round(8 * scale)), cv2.LINE_AA)  # Add a contrasting route halo.
+    cv2.polylines(canvas, [points], False, ROUTE_COLOR, max(3, round(4 * scale)), cv2.LINE_AA)  # Draw the entire actual street walk.
+    accumulated = 0.0  # Space direction arrows independently of navigation numbers.
+    spacing = max(120.0, result["distance_m"] / 24)  # Keep walking instructions readable on screenshot-sized maps.
+    for index, (a, b) in enumerate(zip(walk, walk[1:])):  # Preserve traversal order through repeated streets.
+        accumulated += graph[a][b]["weight"]  # Measure distance since the previous label.
+        if accumulated >= spacing and index + 14 < len(points):  # Add regularly spaced direction markers.
+            point = tuple(int(value) for value in points[index])  # Read the direction-arrow anchor.
+            ahead = tuple(int(value) for value in points[index + 14])  # Follow the route to orient an arrow.
+            cv2.arrowedLine(canvas, point, ahead, ROUTE_COLOR, max(2, round(3 * scale)), cv2.LINE_AA, tipLength=0.5)  # Indicate actual walking direction.
+            accumulated = 0.0  # Advance to the next direction arrow.
+    for index in result["selected"]:  # Highlight collected physical sites once.
+        item = locations[index]  # Read account ownership and graph position.
+        point = tuple(int(round(value * scale)) for value in item["point"])  # Circle the actual detected artwork anchor.
+        cv2.circle(canvas, point, round(22 * scale), COLORS[item["kind"]], max(2, round(3 * scale)), cv2.LINE_AA)  # Apply account category colors.
+    home = tuple(int(value) for value in points[0])  # Read the fixed graph start and finish.
+    cv2.drawMarker(canvas, home, (20, 20, 20), cv2.MARKER_STAR, round(25 * scale), max(2, round(3 * scale)))  # Mark HOME distinctly.
+    cv2.putText(canvas, "HOME", (home[0] + round(15 * scale), home[1] - round(12 * scale)), cv2.FONT_HERSHEY_SIMPLEX, 0.6 * scale, (20, 20, 20), max(1, round(2 * scale)), cv2.LINE_AA)  # Label both start and finish.
+    draw_numbers(canvas, events, scale, walk[0])  # Attach the shared navigation sequence to exact route corners.
+
+
+
