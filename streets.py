@@ -24,11 +24,11 @@ Assumptions & Notes:
     - Approximate block calibration is reported explicitly.
 """
 
-import atexit  # For playing a sound when the program finishes
-import datetime  # For getting the current date and time
-import os  # For running a command in the terminal
-import platform  # For getting the operating system name
-import sys  # For system-specific parameters and functions
-from colorama import Style  # For coloring the terminal
-from Logger import Logger  # For logging output to both terminal and file
-from pathlib import Path  # For handling file paths
+import math  # Calculate pixel-path lengths.
+from typing import Any  # Describe graph diagnostics.
+import cv2  # Segment and reconnect street evidence.
+import networkx as nx  # Represent weighted street topology.
+import numpy as np  # Perform vectorized skeleton thinning.
+from settings import AnalysisError, Image, MapImage, Point, Settings  # Share analysis configuration.
+
+
