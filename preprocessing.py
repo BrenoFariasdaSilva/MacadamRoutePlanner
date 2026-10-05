@@ -44,3 +44,16 @@ def read_image(path: Path) -> Image:  # Load Unicode paths on Windows.
     return image  # Return valid image data.
 
 
+def neutral_mask(image: Image, settings: Settings) -> Image:  # Isolate white street interiors.
+    """
+    Segment neutral bright pixels independently of map hue.
+
+    :param image: Color image to segment.
+    :param settings: Saturation and brightness thresholds.
+    :return: Binary white-pixel mask.
+    """
+
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)  # Separate brightness from hue.
+    return ((hsv[:, :, 1] < settings.white_saturation) & (hsv[:, :, 2] > settings.white_value)).astype(np.uint8) * 255  # Retain neutral paths.
+
+
