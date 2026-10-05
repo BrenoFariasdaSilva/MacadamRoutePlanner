@@ -136,3 +136,11 @@ def refine_streets(first: MapImage, second: MapImage, matrix: NDArray[np.float64
     return refined, {"street_correlation": correlation, "street_agreement": agreement, "final_home_error_pixels": home_error, "final_scales": scales.tolist()}  # Keep final alignment diagnostics explicit.
 
 
+def common_map_mask(first: MapImage, second: MapImage, matrix: NDArray[np.float64]) -> Image:  # Restrict couple routing to map coverage visible in both screenshots.
+    """Intersect usable map masks in the user's coordinate system, excluding interface panels."""
+
+    warped = cv2.warpPerspective(second.usable, matrix, (first.image.shape[1], first.image.shape[0]), flags=cv2.INTER_NEAREST)  # Exclude source borders as well as source interface content.
+    common = cv2.bitwise_and(first.usable, warped)  # Keep only the shared visible map footprint.
+    if not np.any(common):  # Never substitute one account's map for missing common coverage.
+        raise AnalysisError("Screenshots have no common usable map area")  # Request overlapping screenshot evidence.
+    return common  # Use one coverage mask for roads, collectibles, and output display.
