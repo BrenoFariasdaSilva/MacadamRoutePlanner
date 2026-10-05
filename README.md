@@ -554,3 +554,48 @@ make validate
 
 make clean
 ```
+
+### Direct CLI
+
+Direct CLI execution remains available for advanced use.
+
+Couple mode:
+
+```bash
+python main.py --mode couple --user "../1. General.jpg" --girlfriend "../6. Girlfriend General.jpeg" --steps 5000 --minimum 0
+```
+
+Single mode — coins only:
+
+```bash
+python main.py --mode single --image "../1. General.jpg" --coins 5
+```
+
+Single mode — steps only:
+
+```bash
+python main.py --mode single --image "../1. General.jpg" --steps 5000
+```
+
+Single mode — both:
+
+```bash
+python main.py --mode single --image "../1. General.jpg" --coins 5 --steps 5000
+```
+
+Additional CLI options include:
+
+- `--verbose`
+- `--output`
+- `--variants`
+- `--meters-per-pixel`
+- `--match-tolerance`
+- `--sound`
+
+Use:
+
+```bash
+python main.py --help
+```
+
+for complete parameter descriptions.
