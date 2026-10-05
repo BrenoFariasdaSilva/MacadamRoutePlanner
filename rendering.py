@@ -230,3 +230,38 @@ def add_statistics(canvas: Image, result: dict[str, Any], estimated: bool) -> Im
     return np.vstack((canvas, panel))  # Avoid covering map geometry with statistics.
 
 
+def render_outputs(directory: Path, scene: MapImage, graph: nx.Graph, locations: list[dict[str, Any]], result: dict[str, Any], diagnostics: dict[str, Any], coverage: Image | None = None) -> None:  # Write all final user-facing artifacts.
+    """
+    Render both requested images and an auditable route report.
+
+    :param directory: Dedicated output directory.
+    :param scene: User screenshot and original-resolution pixels.
+    :param graph: Detected metric street graph.
+    :param locations: Matched physical collectible sites.
+    :param result: Validated route and statistics.
+    :param diagnostics: Pipeline validation evidence.
+    :param coverage: Optional common-map mask used by the couple graph.
+    :return: None.
+    """
+
+    overlay = scene.original.copy()  # Preserve source screenshot pixels.
+    if coverage is not None:  # Show excluded map coverage without obscuring valid route geometry.
+        excluded = cv2.resize(cv2.bitwise_and(scene.usable, cv2.bitwise_not(coverage)), (overlay.shape[1], overlay.shape[0]), interpolation=cv2.INTER_NEAREST) > 0  # Keep interface panels separate from excluded map pixels.
+        overlay[excluded] = (overlay[excluded].astype(np.float32) * 0.35).astype(np.uint8)  # Dim map areas unavailable in the other screenshot.
+    scale = overlay.shape[1] / scene.image.shape[1]  # Map normalized coordinates to original resolution.
+    events = navigation_points(graph, result["walk"])  # Derive one semantic navigation sequence for both image styles.
+    draw_route(overlay, graph, result, locations, scale, events)  # Render the full route on the original screenshot.
+    clean = np.full_like(scene.image, 246)  # Create an interface-free map canvas.
+    for a, b in graph.edges:  # Draw only extracted street graph edges.
+        cv2.line(clean, a, b, (192, 192, 192), 5, cv2.LINE_AA)  # Show walkable topology as neutral corridors.
+    draw_route(clean, graph, result, locations, 1.0, events)  # Render identical route geometry and ownership colors.
+    coordinates = np.asarray(list(graph))  # Measure the actual detected map extent.
+    margin = 45  # Retain compact corner badges without excess empty map space.
+    left, top = np.maximum(coordinates.min(axis=0) - margin, 0)  # Retain marker and label margins.
+    right, bottom = np.minimum(coordinates.max(axis=0) + margin + 1, (clean.shape[1], clean.shape[0]))  # Exclude unused screenshot interface space.
+    clean = clean[int(top):int(bottom), int(left):int(right)]  # Keep the standalone map compact while walking.
+    estimated = diagnostics["graph"]["calibration"] != "explicit"  # Distinguish approximate block calibration.
+    save_image(directory / "overlay.png", add_statistics(overlay, result, estimated))  # Save the annotated source image.
+    save_image(directory / "clean_map.png", add_statistics(clean, result, estimated))  # Save the standalone walking map.
+    report = {"mode": result.get("mode", "couple"), "route": result, "locations": locations, "diagnostics": diagnostics, "navigation": events, "coordinate_system": "normalized user screenshot pixels", "analysis_width": scene.image.shape[1]}  # Preserve machine-readable route evidence.
+    (directory / "route.json").write_text(json.dumps(report, indent=2, allow_nan=False), encoding="utf-8")  # Write an auditable result without nonfinite values.
