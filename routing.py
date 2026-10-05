@@ -35,6 +35,46 @@ from settings import AnalysisError, Image, MapImage, Settings  # Reuse account r
 from streets import snap_point  # Associate collectibles with streets.
 
 
+def match_locations(first: MapImage, second: MapImage, matrix: NDArray[np.float64], graph: nx.Graph, settings: Settings, coverage: Image | None = None) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:  # Classify physical collectible opportunities.
+    """
+    Match nearby account detections without using their visual variant.
+
+    :param first: User account detections.
+    :param second: Girlfriend account detections.
+    :param matrix: Girlfriend-to-user map homography.
+    :param graph: HOME-connected street graph.
+    :param settings: Matching and snapping tolerances.
+    :param coverage: Optional shared visible map mask in user coordinates.
+    :return: Physical location records and rejected candidates.
+    """
+
+    transformed = transform_points([item.point for item in second.detections], matrix)  # Align girlfriend locations.
+    eligible_a, eligible_b, outside = set(), set(), []  # Filter visibility before matching or snapping near an overlap boundary.
+    for kind, points, eligible in (("user", [item.point for item in first.detections], eligible_a), ("girlfriend", transformed, eligible_b)):  # Treat both accounts symmetrically in aligned coordinates.
+        for index, point in enumerate(points):  # Preserve original detection indices for ownership records.
+            x, y = (int(round(value)) for value in point)  # Sample the same coverage pixels used by the graph.
+            if coverage is None or (0 <= x < coverage.shape[1] and 0 <= y < coverage.shape[0] and coverage[y, x]):  # Require actual common coverage rather than merely proximity to its border.
+                eligible.add(index)  # Retain a visible account opportunity.
+            else:  # Keep outside detections auditable without assigning misleading ownership.
+                outside.append({"point": tuple(point), "kind": kind, "reason": "outside common visible map area"})  # Explain why the detected collectible is not routed.
+    pairs = sorted((math.dist(first.detections[a].point, transformed[b]), a, b) for a in sorted(eligible_a) for b in sorted(eligible_b) if math.dist(first.detections[a].point, transformed[b]) <= settings.match_tolerance)  # Consider only spatially plausible pairs inside common coverage.
+    used_a, used_b = set(), set()  # Enforce one-to-one account correspondence.
+    records = []  # Collect classified physical sites.
+    for distance, a, b in pairs:  # Prefer the closest geometric correspondence.
+        if a in used_a or b in used_b:  # Prevent merging multiple nearby sites.
+            continue  # Preserve already assigned physical locations.
+        alternatives = [other[0] for other in pairs if (other[1] == a or other[2] == b) and other[1:] != (a, b)]  # Detect ambiguous nearest neighbors.
+        if alternatives and min(alternatives) - distance < 4:  # Require a small geometric separation margin.
+            raise AnalysisError(f"Ambiguous cross-account collectible match near {first.detections[a].point}")  # Refuse an unreliable shared classification.
+        used_a.add(a)  # Reserve the user detection.
+        used_b.add(b)  # Reserve the girlfriend detection.
+        records.append({"point": first.detections[a].point, "kind": "shared", "variants": [first.detections[a].variant, second.detections[b].variant], "match_error": distance})  # Preserve shared benefit without doubling distance.
+    records.extend({"point": item.point, "kind": "user", "variants": [item.variant]} for index, item in enumerate(first.detections) if index in eligible_a and index not in used_a)  # Retain user-only opportunities inside common coverage.
+    records.extend({"point": tuple(point), "kind": "girlfriend", "variants": [second.detections[index].variant]} for index, point in enumerate(transformed) if index in eligible_b and index not in used_b)  # Retain girlfriend-only opportunities inside common coverage.
+    accepted, rejected = snap_locations(records, graph, settings)  # Preserve existing geometric snapping and ownership colors.
+    return accepted, outside + rejected  # Report visibility exclusions separately from failed street associations.
+
+
 def snap_locations(records: list[dict[str, Any]], graph: nx.Graph, settings: Settings) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:  # Share graph safety across both account modes.
     """Snap detected physical sites to HOME-connected streets and retain rejection evidence."""
 
