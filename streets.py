@@ -88,6 +88,40 @@ def thin_mask(mask: Image) -> Image:  # Avoid an extra image-processing dependen
     return pixels[1:-1, 1:-1] * 255  # Return unpadded binary skeleton.
 
 
+def build_graph(roads: Image, settings: Settings, meters_per_pixel: float | None) -> tuple[nx.Graph, Image, dict[str, Any]]:  # Convert visible street topology into weighted paths.
+    """
+    Build and calibrate the pixel street graph.
+
+    :param roads: Aligned street corridor mask.
+    :param settings: Approximate block calibration.
+    :param meters_per_pixel: Optional explicit normalized-map calibration.
+    :return: Weighted graph, skeleton, and scale diagnostics.
+    """
+
+    skeleton = thin_mask(roads)  # Extract connected street centerlines.
+    graph = nx.Graph()  # Preserve actual street adjacency.
+    locations = {(int(x), int(y)) for y, x in zip(*np.where(skeleton > 0), strict=True)}  # Index foreground skeleton pixels.
+    for x, y in sorted(locations):  # Add deterministic local graph connectivity.
+        for dx, dy in ((1, 0), (0, 1), (1, 1), (-1, 1)):  # Inspect each undirected adjacency once.
+            target = (x + dx, y + dy)  # Read neighboring centerline position.
+            if target in locations and not (dx and dy and ((x + dx, y) in locations or (x, y + dy) in locations)):  # Avoid diagonal corner-cut shortcuts.
+                graph.add_edge((x, y), target, pixels=math.hypot(dx, dy))  # Store observed street-step length.
+    if graph.number_of_edges() < 100:  # Reject unusable road extraction.
+        raise AnalysisError(f"Street graph unusable: nodes={len(graph)}, edges={graph.number_of_edges()}")  # Report graph size.
+    for component in list(nx.connected_components(graph)):  # Remove isolated text and symbol fragments.
+        if len(component) < 80:  # Require a meaningful street segment.
+            graph.remove_nodes_from(component)  # Discard tiny disconnected artifacts.
+    lengths = corridor_lengths(graph)  # Measure junction-to-junction distances.
+    usable_lengths = [length for length in lengths if 45 < length < settings.width * 0.45]  # Reject tiny junction artifacts and long boundary roads.
+    if meters_per_pixel is None and len(usable_lengths) < 5:  # Require enough measured blocks for calibration.
+        raise AnalysisError(f"Insufficient block segments for scale calibration: {len(usable_lengths)}; supply --meters-per-pixel")  # Request an explicit scale.
+    scale = meters_per_pixel if meters_per_pixel is not None else settings.block_meters / float(np.median(usable_lengths))  # Derive zoom-dependent approximate metric scale.
+    for _, _, data in graph.edges(data=True):  # Attach metric edge lengths.
+        data["weight"] = data["pixels"] * scale  # Convert pixel walking length to meters.
+    diagnostics = {"nodes": len(graph), "edges": graph.number_of_edges(), "components": nx.number_connected_components(graph), "meters_per_pixel": scale, "calibration": "explicit" if meters_per_pixel is not None else "approximate median block = 100 m", "calibration_segments": len(usable_lengths)}  # Report scale provenance.
+    return graph, skeleton, diagnostics  # Return the traversable graph and evidence.
+
+
 def corridor_lengths(graph: nx.Graph) -> list[float]:  # Measure topology-defined street sections.
     """
     Measure nonbranching corridors between graph junctions.
