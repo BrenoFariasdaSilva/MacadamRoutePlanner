@@ -24,11 +24,12 @@ Assumptions & Notes:
     - Route coordinates use normalized pixels until final overlay scaling.
 """
 
-import atexit  # For playing a sound when the program finishes
-import datetime  # For getting the current date and time
-import os  # For running a command in the terminal
-import platform  # For getting the operating system name
-import sys  # For system-specific parameters and functions
-from colorama import Style  # For coloring the terminal
-from Logger import Logger  # For logging output to both terminal and file
-from pathlib import Path  # For handling file paths
+import json  # Save machine-readable route evidence.
+from pathlib import Path  # Manage output paths.
+from typing import Any  # Annotate output records.
+import cv2  # Draw route geometry and labels.
+import networkx as nx  # Render observed street edges.
+import numpy as np  # Prepare rendering canvases.
+from settings import AnalysisError, Image, MapImage  # Share image contracts.
+
+
