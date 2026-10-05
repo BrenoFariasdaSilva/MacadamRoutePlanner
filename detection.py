@@ -161,3 +161,18 @@ def read_template(path: Path) -> Image:  # Accept small artwork assets independe
     return image  # Return usable artwork.
 
 
+def stable_mask(scene: MapImage) -> Image:  # Remove dynamic objects before registration.
+    """
+    Mask collectibles and the profile picture from stable map features.
+
+    :param scene: Prepared and detected account screenshot.
+    :return: Stable-map feature mask.
+    """
+
+    mask = scene.usable.copy()  # Retain existing interface exclusions.
+    for x, y, w, h in [scene.home_box] + [item.box for item in scene.detections]:  # Exclude dynamic marker bounds.
+        cv2.rectangle(mask, (x - 10, y - 10), (x + w + 10, y + h + 10), 0, -1)  # Add antialiasing and shadow margin.
+    hsv = cv2.cvtColor(scene.image, cv2.COLOR_BGR2HSV)  # Locate saturated annotation ink.
+    ink = (((hsv[:, :, 0] < 8) | (hsv[:, :, 0] > 165)) & (hsv[:, :, 1] > 180)).astype(np.uint8)  # Exclude bright red and magenta drawings.
+    mask[cv2.dilate(ink, np.ones((9, 9), np.uint8)) > 0] = 0  # Avoid interpreting annotations as anchors.
+    return mask  # Return only stable visible map content.
