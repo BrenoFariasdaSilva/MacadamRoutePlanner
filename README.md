@@ -100,3 +100,28 @@ The application supports two explicit execution modes:
 The application performs screenshot preprocessing, HOME detection, collectible recognition, street-network extraction, graph construction, route optimization, route rendering, and structured JSON reporting.
 
 It is derived from the project's `main-template.py` conventions and reuses the existing Logger, assets, Makefile workflow, notification infrastructure, and project organization.
+
+## Requirements
+
+- Python **3.13+**.
+- GNU Make available on `PATH`.
+- Windows, macOS, or Linux shell environment compatible with the existing Makefile workflow.
+- One current Macadam screenshot for single-account mode.
+- Two current Macadam screenshots for couple mode.
+- Bundled runtime assets under `.assets/`.
+- Dependencies listed in `requirements.txt`.
+
+Main runtime dependencies include:
+
+- OpenCV.
+- NumPy.
+- NetworkX.
+- Colorama and the existing project Logger infrastructure.
+
+The application does **not** require:
+
+- OCR frameworks.
+- Machine-learning frameworks.
+- Separate profile-picture files.
+- Original development screenshots during normal runtime.
+- Manual collectible template input.
