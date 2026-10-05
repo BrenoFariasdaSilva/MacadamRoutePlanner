@@ -35,6 +35,34 @@ import numpy as np  # Calculate geometric and texture statistics.
 from settings import AnalysisError, Detection, Image, MapImage  # Share analysis records.
 
 
+def validate_assets(manifest: Path, sound: Path | None = None) -> None:  # Reject incomplete runtime resources before image analysis.
+    """
+    Validate every active bundled template and optional notification sound.
+
+    :param manifest: Active collectible manifest with relative template paths.
+    :param sound: Optional notification WAV required by the selected command.
+    :return: None.
+    """
+
+    try:  # Attach the manifest path to every configuration failure.
+        variants = load_variants(manifest)  # Reuse the detector's existing schema validation.
+        for variant in variants:  # Validate all active appearances before matching any screenshot.
+            path = manifest.parent / variant["image"]  # Resolve artwork relative to its manifest.
+            try:  # Identify missing, empty, and malformed template assets precisely.
+                read_template(path)  # Reuse appearance validation without changing detection.
+            except (OSError, ValueError, cv2.error) as error:  # Normalize decoder and filesystem failures.
+                raise AnalysisError(f"Invalid collectible asset {path}: {error}") from error  # Name the actual failed asset.
+    except (OSError, ValueError, cv2.error) as error:  # Preserve explicit startup diagnostics.
+        raise AnalysisError(f"Invalid collectible manifest {manifest}: {error}") from error  # Include the manifest location.
+    if sound is not None:  # Require audio only when notification playback is requested.
+        try:  # Validate the bundled WAV header and sample data.
+            with wave.open(str(sound), "rb") as audio:  # Close the optional sound resource after inspection.
+                if audio.getnframes() == 0 or not audio.readframes(1):  # Reject empty audio resources.
+                    raise ValueError("No audio frames")  # Explain the malformed sound.
+        except (OSError, ValueError, EOFError, wave.Error) as error:  # Normalize sound failures.
+            raise AnalysisError(f"Invalid notification asset {sound}: {error}") from error  # Name the optional failed resource.
+
+
 def detect_home(scene: MapImage) -> None:  # Locate the photograph marker without knowing its pixels.
     """
     Detect a textured photograph enclosed by a large map-marker contour.
