@@ -102,3 +102,46 @@ def route_length(graph: nx.Graph, path: list[tuple[int, int]]) -> float:  # Meas
     return sum(graph[a][b]["weight"] for a, b in zip(path, path[1:]))  # Include repeated walking without duplicated rewards.
 
 
+def extend_distance(graph: nx.Graph, walk: list[tuple[int, int]], home: tuple[int, int], lower: float, upper: float, target: float) -> list[tuple[int, int]]:  # Prefer useful street cycles over repeated distance padding.
+    """
+    Add a supported cycle or bounded HOME excursion when below target.
+
+    :param graph: HOME-connected metric graph.
+    :param walk: Current closed street walk.
+    :param home: Fixed HOME node.
+    :param lower: Preferred minimum distance.
+    :param upper: Hard maximum distance.
+    :param target: Requested metric target.
+    :return: A valid closed walk with improved target proximity.
+    """
+
+    distance = route_length(graph, walk)  # Measure available distance slack.
+    if distance >= lower:  # Avoid unnecessary repeated traversal.
+        return walk  # Preserve an already suitable route.
+    visited = set(walk)  # Identify cycle attachment points.
+    options = []  # Collect legal extensions.
+    for cycle in nx.cycle_basis(graph):  # Consider simple detected street loops.
+        anchors = visited.intersection(cycle)  # Require a connection to the current route.
+        if not anchors:  # Avoid inventing an attachment path.
+            continue  # Inspect another cycle.
+        anchor = min(anchors)  # Choose a deterministic attachment.
+        index = cycle.index(anchor)  # Rotate the cycle to the attachment node.
+        loop = cycle[index:] + cycle[:index] + [anchor]  # Form a closed street loop.
+        total = distance + route_length(graph, loop)  # Include actual cycle distance.
+        if total <= upper:  # Enforce the hard cap.
+            options.append((abs(total - target), loop, anchor))  # Rank by target proximity.
+    if options:  # Prefer a cycle if it improves the short route.
+        _, loop, anchor = min(options)  # Choose the nearest-target street loop.
+        index = walk.index(anchor)  # Locate the route attachment.
+        walk = walk[:index] + loop + walk[index + 1:]  # Splice the cycle into the closed walk.
+        distance = route_length(graph, walk)  # Recompute remaining slack.
+    if distance < lower:  # Search a bounded fallback excursion.
+        lengths, paths = nx.single_source_dijkstra(graph, home, weight="weight")  # Measure legal HOME excursions.
+        candidates = [node for node, length in lengths.items() if 0 < 2 * length <= upper - distance]  # Reserve both outbound and return legs.
+        if candidates:  # Choose the closest achievable target distance.
+            node = min(candidates, key=lambda item: (abs(distance + 2 * lengths[item] - target), item))  # Prefer target proximity deterministically.
+            path = paths[node]  # Recover a supported street excursion.
+            walk = walk + path[1:] + list(reversed(path))[1:]  # Return HOME along actual graph edges.
+    return walk  # Preserve closed-loop geometry.
+
+
