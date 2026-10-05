@@ -71,3 +71,5 @@ class MapImage:  # Store a normalized screenshot and masks.
     diagnostics: dict[str, Any] = field(default_factory=dict)  # Retain quantitative evidence.
 
 
+class AnalysisError(ValueError):  # Distinguish rejected analysis from unexpected failures.
+    pass  # Inherit standard exception behavior.
