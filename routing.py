@@ -90,3 +90,15 @@ def snap_locations(records: list[dict[str, Any]], graph: nx.Graph, settings: Set
     return sorted(accepted, key=lambda item: (item["node"], item["kind"])), rejected  # Ensure deterministic candidate ordering.
 
 
+def route_length(graph: nx.Graph, path: list[tuple[int, int]]) -> float:  # Measure only real graph transitions.
+    """
+    Sum the weighted length of an explicit street walk.
+
+    :param graph: Metric street graph.
+    :param path: Ordered graph-node walk.
+    :return: Route distance in meters.
+    """
+
+    return sum(graph[a][b]["weight"] for a, b in zip(path, path[1:]))  # Include repeated walking without duplicated rewards.
+
+
