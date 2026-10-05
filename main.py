@@ -31,11 +31,31 @@ Assumptions & Notes:
     - Unreliable image analysis fails rather than emitting an invented route.
 """
 
-import atexit  # For playing a sound when the program finishes
-import datetime  # For getting the current date and time
-import os  # For running a command in the terminal
-import platform  # For getting the operating system name
-import sys  # For system-specific parameters and functions
-from colorama import Style  # For coloring the terminal
-from Logger import Logger  # For logging output to both terminal and file
-from pathlib import Path  # For handling file paths
+import argparse  # Parse application-level inputs.
+import datetime  # Report execution timestamps.
+import json  # Save failure diagnostics.
+import math  # Validate finite calibration values.
+import platform  # Preserve platform-specific sound behavior.
+import re  # Recognize account roles in screenshot filenames.
+import stat  # Exclude hidden and system input files on Windows.
+import shutil  # Locate optional system audio players.
+import subprocess  # Play completion audio without shell interpolation.
+import sys  # Read interactive execution context.
+from contextlib import redirect_stderr, redirect_stdout  # Centralize runtime logging.
+from dataclasses import replace  # Apply explicit tolerance overrides.
+from pathlib import Path  # Anchor paths to the project root.
+from typing import Any, TextIO, cast  # Annotate logger and diagnostic contracts.
+import cv2  # Fuse aligned street masks.
+import networkx as nx  # Retain the HOME-connected graph.
+import numpy as np  # Clean small fusion artifacts.
+from colorama import Style  # Preserve terminal color conventions.
+from Logger import Logger  # Reuse the existing dual-output logger.
+from detection import detect_collectibles, detect_home, validate_assets  # Detect account-local objects and validate bundled resources.
+from preprocessing import prepare_map  # Load and exclude screenshot interface content.
+from registration import common_map_mask, register_maps  # Validate alignment and shared visible map coverage.
+from rendering import render_outputs, save_image  # Write final and optional diagnostic images.
+from routing import match_locations, optimize_route, optimize_single_route, snap_locations  # Match account opportunities and route them.
+from settings import ROOT, AnalysisError, Settings  # Share configuration and failure semantics.
+from streets import build_graph, repair_roads, snap_point  # Construct and calibrate street topology.
+
+
