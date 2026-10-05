@@ -444,3 +444,113 @@ If ownership cannot be determined safely:
 - Noninteractive execution fails and requests explicit paths or clearer filenames.
 
 Explicit `USER_IMAGE` and `GIRLFRIEND_IMAGE` values bypass discovery.
+
+### Makefile Interface
+
+Run:
+
+```bash
+make help
+```
+
+to display targets, variables, discovery rules, directories, examples, and CLI parameters.
+
+GNU Make does not accept unknown application options such as:
+
+```bash
+make --steps 5000
+```
+
+Use:
+
+```bash
+make run STEPS=5000
+```
+
+instead.
+
+Available targets include:
+
+| Target | Behavior |
+| --- | --- |
+| `help`, `all`, bare `make` | Display usage |
+| `setup` | Create environment and install dependencies |
+| `install` | Install project dependencies |
+| `dependencies` | Install dependencies from `requirements.txt` |
+| `run` | Couple-mode alias |
+| `run-couple` | Run two-account routing |
+| `run-single` | Run single-account routing |
+| `compile` | Compile all project Python modules |
+| `validate` | Run compilation, imports, assets, dependency and CLI validation |
+| `clean` | Remove project `.pyc` and empty `__pycache__` directories |
+| `generate_requirements` | Explicitly regenerate `requirements.txt` using `pip freeze` |
+
+Couple-mode variables:
+
+```text
+USER_IMAGE
+GIRLFRIEND_IMAGE
+STEPS
+MINIMUM
+DEBUG
+ARGS
+```
+
+Single-mode variables:
+
+```text
+IMAGE
+COINS
+STEPS
+DEBUG
+ARGS
+```
+
+Shared bootstrap variable:
+
+```text
+PYTHON_CMD
+```
+
+#### Argument precedence
+
+When `ARGS` is nonempty:
+
+1. It supplies the complete CLI argument set except the mode owned by the Make target.
+2. Other run variables are ignored.
+
+Otherwise:
+
+1. Explicit image variables override automatic discovery.
+2. Without explicit paths, the corresponding `Inputs/` location is used.
+3. `STEPS`, `MINIMUM`, `COINS`, and `DEBUG` are appended according to the selected mode.
+
+Examples:
+
+```bash
+make help
+
+make setup
+
+make run-couple STEPS=5000 MINIMUM=0
+
+make run-couple USER_IMAGE="../1. General.jpg" GIRLFRIEND_IMAGE="../6. Girlfriend General.jpeg" STEPS=5000 MINIMUM=0 DEBUG=1
+
+make run-single COINS=5
+
+make run-single STEPS=5000
+
+make run-single COINS=8 STEPS=5000
+
+make run-single IMAGE="../1. General.jpg" COINS=5 DEBUG=1
+
+make run-single IMAGE="../1. General.jpg" STEPS=5000 DEBUG=1
+
+make run-single IMAGE="../1. General.jpg" COINS=5 STEPS=5000 DEBUG=1
+
+make compile
+
+make validate
+
+make clean
+```
