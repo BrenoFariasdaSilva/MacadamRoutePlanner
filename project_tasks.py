@@ -169,3 +169,65 @@ def application_arguments(mode: str) -> list[str]:  # Translate Make inputs into
     return result  # Let main.py own discovery and business logic.
 
 
+def main() -> int:  # Dispatch the small portable Make interface.
+    """Execute the selected project task and return a meaningful exit status."""
+
+    task = sys.argv[1] if len(sys.argv) > 1 else "help"  # Keep default invocation harmless.
+    try:  # Report project task failures without hiding nonzero status.
+        if task == "help":  # Avoid requiring installed application dependencies for help.
+            print(HELP)  # Display complete daily-use documentation.
+            return 0  # Finish without launching the planner.
+        if task in {"setup", "install", "dependencies"}:  # Preserve one shared environment installation path.
+            if not PYTHON.is_file():  # Reuse a working environment when present.
+                venv.EnvBuilder(with_pip=True).create(ROOT / "venv")  # Create the project-local Python environment.
+            run_command([str(PYTHON), "-m", "pip", "install", "--disable-pip-version-check", "-r", "requirements.txt"])  # Install only missing or mismatched pinned requirements.
+            return 0  # Propagate installation failures through the surrounding handler.
+        if not PYTHON.is_file():  # Never accidentally run with unrelated global dependencies.
+            raise ValueError("Project venv missing; run make setup first")  # Give an actionable setup instruction.
+        if Path(sys.prefix).resolve() != (ROOT / "venv").resolve():  # Run every execution and validation task inside the project environment.
+            run_command([str(PYTHON), "-W", "error", str(Path(__file__)), task])  # Reenter this standard-library dispatcher using the project interpreter.
+            return 0  # Preserve the child task's success status.
+        sources = source_files()  # Discover source modules once for the selected task.
+        if task in {"compile", "validate"}:  # Fail on syntax errors and warnings in every source module.
+            for source in sources:  # Avoid fragile manually maintained compilation lists.
+                py_compile.compile(str(source), doraise=True)  # Compile without executing application modules.
+            print(f"Compiled {len(sources)} project Python modules.", flush=True)  # Report actual validation coverage.
+        if task == "validate":  # Run independent runtime and dependency validation.
+            modules = [source.stem for source in sources if source.parent == ROOT and source.stem.isidentifier()]  # Exclude the archival hyphenated template from runtime imports.
+            run_command([str(PYTHON), "-W", "error", "-c", "import importlib; [importlib.import_module(name) for name in " + repr(modules) + "]"])  # Validate all importable top-level application modules.
+            from detection import validate_assets  # Load runtime dependencies only inside validation.
+            validate_assets(ROOT / ".assets/Collectibles/variants.json", ROOT / ".assets/Sounds/NotificationSound.wav")  # Validate bundled templates and optional sound.
+            print("Bundled assets and application imports validated.", flush=True)  # Report successful runtime prerequisites.
+            run_command([str(PYTHON), "-m", "pip", "check"])  # Verify installed dependency consistency.
+            run_command([str(PYTHON), "main.py", "--help"])  # Exercise the actual CLI parser.
+            for module in ("ruff", "pyright"):  # Use optional developer tooling only when installed.
+                if importlib.util.find_spec(module) is None:  # Report unavailable tooling honestly.
+                    print(f"Skipped {module}: not installed in project venv.")  # Avoid claiming unexecuted static analysis.
+                else:  # Propagate genuine installed-tool failures.
+                    run_command([str(PYTHON), "-m", module, *(["check"] if module == "ruff" else []), *(str(source) for source in sources)])  # Restrict analysis to discovered project sources.
+        elif task in {"run", "run-couple", "run-single"}:  # Execute the existing application unchanged beyond its CLI integration.
+            run_command([str(PYTHON), "main.py", *application_arguments("single" if task == "run-single" else "couple")])  # Preserve real pipeline exit status.
+        elif task == "clean":  # Remove only verified project bytecode files.
+            directories = {source.parent for source in sources}  # Restrict cleanup to source directories outside protected trees.
+            for directory in directories:  # Leave screenshots, assets, logs, outputs, and environments untouched.
+                cache = directory / "__pycache__"  # Inspect only the conventional bytecode directory.
+                paths = list(directory.glob("*.pyc")) + (list(cache.glob("*.pyc")) if cache.is_dir() and not cache.is_symlink() else [])  # Never recursively delete arbitrary directories.
+                for path in paths:  # Verify each final target before removing generated bytecode.
+                    if not path.is_symlink() and path.resolve().is_relative_to(ROOT):  # Keep every resolved target inside the project.
+                        path.unlink()  # Remove this bytecode file only.
+                if cache.is_dir() and not cache.is_symlink() and not any(cache.iterdir()):  # Remove empty cache directories only.
+                    cache.rmdir()  # Preserve any unexpected cache contents.
+            print("Removed project bytecode; Inputs, Outputs, assets, logs and venv preserved.")  # Describe the exact cleanup scope.
+        elif task == "generate_requirements":  # Keep dependency export explicitly opt-in.
+            result = subprocess.run([str(PYTHON), "-m", "pip", "freeze"], cwd=ROOT, check=True, capture_output=True, text=True)  # Collect a successful dependency snapshot before overwriting.
+            (ROOT / "requirements.txt").write_text(result.stdout, encoding="utf-8")  # Preserve the existing export target.
+        elif task not in {"compile", "validate"}:  # Reject misspelled internal tasks.
+            raise ValueError(f"Unknown project task: {task}")  # Keep failure explicit.
+        return 0  # Report successful task completion.
+    except subprocess.CalledProcessError as error:  # Preserve application and dependency command failures.
+        return error.returncode  # Let Make report a failed target accurately.
+    except (OSError, ValueError, py_compile.PyCompileError) as error:  # Normalize actionable task failures.
+        print(f"Project task failed: {error}", file=sys.stderr)  # Explain the failing prerequisite.
+        return 2  # Return a nonzero task status.
+
+
