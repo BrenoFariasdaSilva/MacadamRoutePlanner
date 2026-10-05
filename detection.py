@@ -35,6 +35,48 @@ import numpy as np  # Calculate geometric and texture statistics.
 from settings import AnalysisError, Detection, Image, MapImage  # Share analysis records.
 
 
+def detect_home(scene: MapImage) -> None:  # Locate the photograph marker without knowing its pixels.
+    """
+    Detect a textured photograph enclosed by a large map-marker contour.
+
+    :param scene: Prepared account screenshot to update.
+    :return: None.
+    """
+
+    gray = cv2.cvtColor(scene.image, cv2.COLOR_BGR2GRAY)  # Measure luminance texture.
+    contours, _ = cv2.findContours((gray < 100).astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)  # Include nested marker outlines.
+    candidates = []  # Collect independently scored marker regions.
+    for contour in contours:  # Evaluate marker geometry.
+        x, y, w, h = cv2.boundingRect(contour)  # Read enclosing dimensions.
+        if not (90 < w < 220 and 90 < h < 230 and 0.7 < w / h < 1.3):  # Reject small icons and large panels.
+            continue  # Inspect the next contour.
+        if np.mean(scene.usable[y:y + h, x:x + w] > 0) < 0.95:  # Exclude navigation and promotional avatars.
+            continue  # Ignore non-map pictures.
+        points = contour.reshape(-1, 2)  # Inspect the marker's actual bottom geometry.
+        if np.ptp(points[points[:, 1] >= y + h - 3, 0]) > w * 0.2:  # A map pin has a narrow tip; attached distance bubbles have broad rounded bottoms.
+            continue  # Prefer the nested pin outline instead of a merged label boundary.
+        patch = gray[y + h // 5:y + 4 * h // 5, x + w // 5:x + 4 * w // 5]  # Inspect the photograph interior.
+        texture = float(np.std(patch))  # Distinguish photographs from flat symbol fills.
+        dark_fraction = float(np.mean(patch < 155))  # Require substantial photographic content.
+        if texture > 30 and dark_fraction > 0.35 and cv2.contourArea(contour) > w * h * 0.5:  # Require texture and an enclosed marker.
+            candidates.append((texture * dark_fraction, (x, y, w, h)))  # Score candidate evidence.
+    candidates.sort(key=lambda item: item[1][2] * item[1][3], reverse=True)  # Prefer enclosing outlines over inner photograph contours.
+    distinct = []  # Suppress nested outlines of the same marker.
+    for score, box in candidates:  # Keep spatially separate candidates.
+        x, y, w, h = box  # Read candidate geometry.
+        if all(np.hypot(x + w / 2 - (b[0] + b[2] / 2), y + h / 2 - (b[1] + b[3] / 2)) > 80 for _, b in distinct):  # Merge nested marker boundaries.
+            distinct.append((score, box))  # Retain a distinct location.
+    scene.diagnostics["home_candidates"] = len(distinct)  # Expose ambiguity quantitatively.
+    if len(distinct) != 1:  # Refuse ambiguous HOME locations.
+        raise AnalysisError(f"HOME detection requires one reliable marker; found {len(distinct)}: {distinct}")  # Report candidate evidence.
+    x, y, w, h = distinct[0][1]  # Select the unique photograph marker.
+    scene.home_box = (x, y, w, h)  # Preserve dynamic exclusion geometry.
+    outline = next(contour for contour in contours if cv2.boundingRect(contour) == scene.home_box)  # Recover the selected contour.
+    tip = outline.reshape(-1, 2)  # Read boundary coordinates.
+    scene.home = (float(np.mean(tip[tip[:, 1] >= y + h - 3, 0])), float(y + h))  # Use the actual bottom tip instead of the portrait center.
+    scene.diagnostics.update(home=scene.home, home_box=scene.home_box)  # Preserve the independently detected account position.
+
+
 def load_variants(manifest: Path) -> list[dict[str, Any]]:  # Validate replaceable visual definitions centrally.
     """
     Load a nonempty list of usable collectible-template definitions.
