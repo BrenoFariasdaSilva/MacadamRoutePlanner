@@ -95,3 +95,28 @@ def discover_images(directory: Path) -> list[Path]:  # Select two screenshots wi
     return files  # Share deterministic image discovery across explicit modes.
 
 
+def discover_inputs(directory: Path) -> tuple[Path, Path]:  # Preserve couple account assignment.
+    """Discover exactly two screenshots and resolve their account roles."""
+
+    files = discover_images(directory)  # Reuse readable top-level candidates.
+    if len(files) != 2:  # Never silently choose among ambiguous image sets.
+        raise AnalysisError(f"Inputs requires exactly two readable screenshots; found {len(files)} in {directory}: {[path.name for path in files]}. Supply --user and --girlfriend explicitly or keep only two screenshots.")  # Explain how to resolve discovery failure.
+    roles = []  # Infer roles from complete filename tokens rather than substrings.
+    for path in files:  # Support documented account filename patterns.
+        tokens = set(re.split(r"[^a-z0-9]+", path.stem.lower()))  # Recognize user-2026 and girlfriend_current names safely.
+        roles.append({role for role, names in (("user", {"user", "me", "mine"}), ("girlfriend", {"girlfriend", "gf"})) if tokens & names})  # Detect conflicting as well as unique naming evidence.
+    if all(len(role) <= 1 for role in roles):  # Accept only consistent role hints.
+        if (roles[0] == {"user"} and roles[1] != {"user"}) or (roles[1] == {"girlfriend"} and roles[0] != {"girlfriend"}):  # Infer the complementary account when one name is clear.
+            return files[0], files[1]  # Keep the named user as the registration destination.
+        if (roles[1] == {"user"} and roles[0] != {"user"}) or (roles[0] == {"girlfriend"} and roles[1] != {"girlfriend"}):  # Handle reversed alphabetical order.
+            return files[1], files[0]  # Preserve ownership colors and overlay account semantics.
+    if not sys.stdin.isatty():  # Account assignment affects the overlay and ownership labels.
+        raise AnalysisError(f"Cannot infer account roles safely: {[path.name for path in files]}. Name files user.* and girlfriend.* or supply both explicit paths.")  # Avoid silently swapping account identities.
+    print(f"Select YOUR screenshot: 1 = {files[0].name}; 2 = {files[1].name}")  # Present deterministic interactive choices.
+    answer = input("Your screenshot [1/2]: ").strip()  # Request only the missing account identity.
+    if answer not in {"1", "2"}:  # Reject an ambiguous selection.
+        raise AnalysisError("Choose 1 or 2, or use explicit --user and --girlfriend paths")  # Explain accepted account selection.
+    index = int(answer) - 1  # Convert the selected account index.
+    return files[index], files[1 - index]  # Assign the other screenshot to the girlfriend account.
+
+
