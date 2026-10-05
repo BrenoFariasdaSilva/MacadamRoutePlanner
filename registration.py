@@ -46,6 +46,58 @@ def transform_points(points: list[Point], matrix: NDArray[np.float64]) -> NDArra
     return cv2.perspectiveTransform(np.asarray(points, dtype=np.float64).reshape(-1, 1, 2), matrix).reshape(-1, 2)  # Apply homogeneous projection.
 
 
+def register_maps(first: MapImage, second: MapImage, settings: Settings) -> tuple[NDArray[np.float64], dict[str, Any]]:  # Align using stable map content.
+    """
+    Estimate and validate a projective map alignment.
+
+    :param first: Destination account image.
+    :param second: Source account image.
+    :param settings: Matching and validation tolerances.
+    :return: Homography and measurable alignment evidence.
+    """
+
+    cv2.setRNGSeed(0)  # Make robust estimation reproducible.
+    sift = cv2.SIFT_create(nfeatures=7000, contrastThreshold=0.025)  # Retain label and road junction features.
+    key_a, desc_a = sift.detectAndCompute(cv2.cvtColor(first.image, cv2.COLOR_BGR2GRAY), stable_mask(first))  # Extract destination features.
+    key_b, desc_b = sift.detectAndCompute(cv2.cvtColor(second.image, cv2.COLOR_BGR2GRAY), stable_mask(second))  # Extract source features.
+    if desc_a is None or desc_b is None or min(len(desc_a), len(desc_b)) < 10:  # Require sufficient stable content.
+        raise AnalysisError("Registration has fewer than ten stable features")  # Report insufficient map evidence.
+    pairs = cv2.BFMatcher().knnMatch(desc_b, desc_a, k=2)  # Compare source descriptors with destination descriptors.
+    matches = [pair[0] for pair in pairs if len(pair) == 2 and pair[0].distance < settings.feature_ratio * pair[1].distance]  # Reject ambiguous feature identities.
+    reverse = cv2.BFMatcher().knnMatch(desc_a, desc_b, k=2)  # Require reciprocal descriptor agreement.
+    reciprocal = {(pair[0].queryIdx, pair[0].trainIdx) for pair in reverse if len(pair) == 2 and pair[0].distance < settings.feature_ratio * pair[1].distance}  # Retain distinctive reverse matches.
+    matches = [match for match in matches if (match.trainIdx, match.queryIdx) in reciprocal]  # Remove one-directional repetitive-label matches.
+    matches = list({match.trainIdx: match for match in sorted(matches, key=lambda item: -item.distance)}.values())  # Avoid duplicated destination anchors.
+    if len(matches) < settings.minimum_inliers:  # Require enough candidates for robust estimation.
+        raise AnalysisError(f"Registration has only {len(matches)} filtered matches")  # Report the correspondence count.
+    source = np.float64([key_b[match.queryIdx].pt for match in matches])  # Collect source coordinates.
+    destination = np.float64([key_a[match.trainIdx].pt for match in matches])  # Collect destination coordinates.
+    matrix, mask = cv2.findHomography(source, destination, cv2.USAC_MAGSAC, settings.ransac_pixels)  # Use noise-marginalized robust estimation for repetitive map labels.
+    if matrix is None or mask is None or not np.isfinite(matrix).all():  # Reject failed estimation.
+        raise AnalysisError("RANSAC did not produce a finite homography")  # Stop before graph fusion.
+    errors = np.linalg.norm(transform_points([tuple(point) for point in source], matrix) - destination, axis=1)  # Independently recompute reprojection errors.
+    inliers = (mask.ravel() > 0) & (errors <= settings.ransac_pixels)  # Validate returned inlier membership.
+    count = int(np.sum(inliers))  # Count supported correspondences.
+    home_error = float(np.linalg.norm(transform_points([second.home], matrix)[0] - first.home))  # Report account separation without assuming the people are colocated.
+    jacobian = matrix[:2, :2]  # Approximate local scale and orientation.
+    scales = np.linalg.svd(jacobian, compute_uv=False)  # Detect collapse, reflection, and extreme distortion.
+    rotation = float(np.degrees(np.arctan2(matrix[1, 0], matrix[0, 0])))  # Measure map rotation.
+    height, width = second.image.shape[:2]  # Read the source extent.
+    corners = np.float64([[0, 0], [width, 0], [width, height], [0, height]])  # Sample transform denominators.
+    denominators = corners @ matrix[2, :2] + matrix[2, 2]  # Detect projective poles inside the image.
+    coverage = float(cv2.contourArea(cv2.convexHull(source[inliers].astype(np.float32))) / (width * height)) if count >= 3 else 0.0  # Require spatially distributed evidence.
+    diagnostics = {"matches": len(matches), "inliers": count, "inlier_ratio": count / len(matches), "median_error_pixels": float(np.median(errors[inliers])) if count else None, "home_error_pixels": home_error, "scales": scales.tolist(), "rotation_degrees": rotation, "inlier_coverage": coverage, "matrix": matrix.tolist()}  # Preserve complete registration evidence.
+    valid = count >= settings.minimum_inliers and coverage >= 0.01  # Require distributed feature support; final street evidence validates alignment independently of avatars.
+    geometry = np.linalg.det(jacobian) > 0 and min(scales) > 0.3 and max(scales) < 3.0 and max(scales) / min(scales) < 1.6 and abs(rotation) < 35 and min(denominators) > 0.4 and max(denominators) < 1.6  # Bound plausible screenshot transformations.
+    if not valid or not geometry:  # Reject low confidence instead of forcing an alignment.
+        raise AnalysisError(f"Registration rejected: {diagnostics}")  # Include quantitative rejection evidence.
+    matrix, refinement = refine_streets(first, second, matrix, settings)  # Correct label-anchor offsets using observed street geometry.
+    diagnostics.update(refinement)  # Preserve initial feature evidence and final road evidence separately.
+    diagnostics["home_is_alignment_constraint"] = False  # Distinguish diagnostic account separation from registration acceptance.
+    diagnostics["matrix"] = matrix.tolist()  # Report the final source-to-destination transform.
+    return matrix, diagnostics  # Return a validated coordinate mapping.
+
+
 def refine_streets(first: MapImage, second: MapImage, matrix: NDArray[np.float64], settings: Settings) -> tuple[NDArray[np.float64], dict[str, Any]]:  # Refine feature alignment against road interiors.
     """
     Refine a validated initialization using masked street correlation.
