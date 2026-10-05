@@ -152,3 +152,20 @@ def corridor_lengths(graph: nx.Graph) -> list[float]:  # Measure topology-define
     return lengths  # Return measured block geometry.
 
 
+def snap_point(graph: nx.Graph, point: Point, tolerance: float) -> tuple[tuple[int, int], float]:  # Associate markers with nearby street positions.
+    """
+    Snap a marker to the closest detected street pixel within tolerance.
+
+    :param graph: Detected street graph.
+    :param point: Marker location in normalized pixels.
+    :param tolerance: Maximum admissible pixel displacement.
+    :return: Street node and measured snap distance.
+    """
+
+    if not graph:  # Reject an empty topology.
+        raise AnalysisError("Cannot snap a marker to an empty street graph")  # Report missing street evidence.
+    node = min(graph, key=lambda candidate: (math.dist(candidate, point), candidate))  # Select the nearest deterministic street position.
+    distance = math.dist(node, point)  # Measure the required displacement.
+    if distance > tolerance:  # Reject unsupported associations.
+        raise AnalysisError(f"Marker cannot reach graph: distance={distance:.2f}px, tolerance={tolerance:.2f}px")  # Include measurable evidence.
+    return node, distance  # Return the accepted graph association.
