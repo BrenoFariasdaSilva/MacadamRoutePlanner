@@ -1074,3 +1074,20 @@ For complete contribution guidelines, read the [CONTRIBUTING.md](CONTRIBUTING.md
 6. **Open a Pull Request**
 
    Navigate to the repository on GitHub and create a pull request describing the changes.
+
+## Collaborators
+
+We thank the following people who contributed to this project:
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/BrenoFariasdaSilva" title="Breno Farias da Silva">
+        <img src="https://github.com/BrenoFariasdaSilva.png" width="100px;" alt="Breno Farias da Silva"/><br>
+        <sub>
+          <b>Breno Farias da Silva</b>
+        </sub>
+      </a>
+    </td>
+  </tr>
+</table>
