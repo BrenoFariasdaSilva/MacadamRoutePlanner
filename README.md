@@ -785,3 +785,17 @@ The application dynamically excludes non-map interface areas such as:
 - Floating controls.
 
 Neutral bright pixels are used to identify street corridors across the supplied visual themes.
+
+### HOME Detection
+
+HOME detection:
+
+- Searches for the profile marker directly inside each screenshot.
+- Uses enclosing marker geometry.
+- Uses photographic luminance variation.
+- Excludes masked UI.
+- Requires one sufficiently distinct valid candidate.
+
+No fixed stored profile photograph is required.
+
+The application does not compare the profile against identity pixels stored in `.assets/`.
