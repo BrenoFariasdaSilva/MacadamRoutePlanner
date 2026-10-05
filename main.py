@@ -321,3 +321,5 @@ def main() -> int:  # Centralize logger lifecycle and CLI exit behavior.
     return status  # Preserve machine-readable completion semantics.
 
 
+if __name__ == "__main__":  # Preserve the template entry-point convention.
+    sys.exit(main())  # Execute only when launched as an application.
