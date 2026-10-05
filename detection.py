@@ -63,3 +63,19 @@ def load_variants(manifest: Path) -> list[dict[str, Any]]:  # Validate replaceab
     return variants  # Return complete usable definitions.
 
 
+def read_template(path: Path) -> Image:  # Accept small artwork assets independently of screenshot sizing.
+    """
+    Read and validate an icon template.
+
+    :param path: Icon asset path.
+    :return: Decoded color template.
+    """
+
+    image = cv2.imdecode(np.fromfile(path, dtype=np.uint8), cv2.IMREAD_COLOR)  # Load a Unicode asset path.
+    if image is None or min(image.shape[:2]) < 8:  # Reject empty or unusably small assets.
+        raise AnalysisError(f"Invalid collectible template: {path}")  # Identify the broken variant asset.
+    if float(np.std(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY))) < 5:  # Require usable appearance contrast for normalized correlation.
+        raise AnalysisError(f"Collectible template has insufficient visual contrast: {path}")  # Reject uniform artwork that would match everywhere.
+    return image  # Return usable artwork.
+
+
