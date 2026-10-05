@@ -882,3 +882,29 @@ Street processing performs:
 - HOME-component selection.
 
 Graph edges follow detected street centerlines.
+
+### Calibration
+
+Default scale uses:
+
+```text
+100 / median_accepted_intersection_segment_pixels
+```
+
+meters per normalized pixel.
+
+This is based on the approximate 100 m intersection-to-intersection reference available during development.
+
+The resulting distance remains an estimate rather than a surveyed measurement.
+
+An independent scale can be supplied using:
+
+```text
+--meters-per-pixel VALUE
+```
+
+If the original screenshot has width `W` and its known original-pixel scale is `S`, convert it to the normalized-width scale using:
+
+```text
+S * W / 800
+```
