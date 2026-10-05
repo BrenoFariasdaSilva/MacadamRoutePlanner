@@ -277,3 +277,47 @@ def play_sound() -> None:  # Adapt the existing template's completion behavior.
         subprocess.run([command, str(SOUND_FILE)], check=True)  # Use argument-safe process execution.
 
 
+def main() -> int:  # Centralize logger lifecycle and CLI exit behavior.
+    """
+    Execute the application with template-derived logging and timing.
+
+    :return: Zero for success, two for rejection, or three for a valid alternative.
+    """
+
+    global VERBOSE  # Apply the template's application-wide verbose setting.
+    arguments = parse_arguments()  # Keep help and argument errors free of runtime side effects.
+    VERBOSE = arguments.verbose  # Activate optional quantitative terminal output.
+    start_time = datetime.datetime.now()  # Record execution start.
+    directory = arguments.output.resolve() / f"run-{start_time:%Y%m%d-%H%M%S-%f}"  # Avoid overwriting previous results or source images.
+    directory.mkdir(parents=True, exist_ok=False)  # Create a dedicated run directory.
+    logger = Logger(str(ROOT / "Logs/main.log"), clean=True)  # Reuse existing logging infrastructure once.
+    status = 0  # Default to a fully satisfied route.
+    try:  # Restore streams and close logs on every execution path.
+        with redirect_stdout(cast(TextIO, logger)), redirect_stderr(cast(TextIO, logger)):  # Centralize output redirection in the application entry point.
+            print(f"{BackgroundColors.GREEN}Macadam route analysis{Style.RESET_ALL}")  # Preserve template-style terminal messaging.
+            try:  # Report expected analysis and input failures explicitly.
+                result = run_pipeline(arguments, directory)  # Execute the complete modular pipeline.
+                status = 3 if result["unmet"] else 0  # Distinguish valid alternatives from full satisfaction.
+                if arguments.mode == "single":  # Report only meaningful one-account statistics.
+                    print(f"Single: {result['distance_m']:.1f} m; steps: {result['estimated_steps']}; collected: {result['collectibles_collected']}/{result['collectibles_reachable']}; requested coins: {arguments.coins}; requested steps: {arguments.steps}; maximum: {result['upper_m']}")  # Expose requested and achieved constraints.
+                else:  # Preserve existing account benefits.
+                    print(f"Distance: {result['distance_m']:.1f} m; steps: {result['estimated_steps']}; user: {result['user_opportunities']}; girlfriend: {result['girlfriend_opportunities']}; shared: {result['shared']}")  # Report both account benefits.
+                for condition in result["unmet"]:  # Explicitly report unmet requests.
+                    print(f"{BackgroundColors.YELLOW}Valid alternative: {condition}{Style.RESET_ALL}")  # Avoid silently claiming constraint satisfaction.
+                print(f"Outputs: {directory}")  # Identify generated artifacts.
+            except (AnalysisError, OSError, cv2.error, json.JSONDecodeError) as error:  # Preserve useful diagnostics for expected failures.
+                status = 2  # Report rejected analysis through the process exit code.
+                print(f"{BackgroundColors.RED}Analysis failed: {error}{Style.RESET_ALL}")  # Explain why no route was accepted.
+                failure = {"error": str(error), "mode": arguments.mode}  # Preserve the selected workflow even when analysis fails.
+                if arguments.mode == "single":  # Report requested constraints when no reliable route can be generated.
+                    failure.update(input=str(arguments.image.resolve()), requested_coins=arguments.coins, requested_steps=arguments.steps, upper_m=math.ceil(arguments.steps / 1.3) * 1.05 if arguments.steps is not None else None)  # Avoid inventing reachable counts after failed image analysis.
+                (directory / "failure.json").write_text(json.dumps(failure, indent=2), encoding="utf-8")  # Preserve failure evidence separately from valid results.
+            finish_time = datetime.datetime.now()  # Record actual completion time.
+            print(f"Start time: {start_time:%d/%m/%Y - %H:%M:%S}; finish time: {finish_time:%d/%m/%Y - %H:%M:%S}; execution time: {(finish_time - start_time).total_seconds():.2f}s")  # Preserve template execution-time reporting.
+    finally:  # Release the reused logger even after an unexpected exception.
+        logger.close()  # Close the application log.
+    if arguments.sound and status in (0, 3):  # Play completion audio only after producing valid outputs.
+        play_sound()  # Reuse the existing notification asset.
+    return status  # Preserve machine-readable completion semantics.
+
+
