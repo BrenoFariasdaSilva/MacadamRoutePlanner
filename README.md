@@ -932,3 +932,29 @@ Other limitations include:
 - Single-account exact collectible-state search can grow exponentially.
 - Couple-mode beam search does not guarantee a mathematical global optimum.
 - Windows Make execution has been validated; Unix execution follows the same project workflow but may not have received equivalent runtime validation.
+
+## Validation
+
+Run:
+
+```bash
+make compile
+make validate
+```
+
+`make compile` discovers and compiles project Python modules while excluding runtime/environment directories.
+
+`make validate` validates available project components including:
+
+- Python compilation.
+- Application imports.
+- Bundled collectible assets.
+- Optional notification WAV.
+- Dependency consistency.
+- CLI help.
+- Ruff when installed.
+- Pyright when installed.
+
+Unavailable optional static-analysis tools are explicitly reported rather than falsely claimed as successful.
+
+Validation does not require the numbered development screenshots.
