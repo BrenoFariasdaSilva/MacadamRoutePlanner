@@ -1010,3 +1010,23 @@ Outputs/
 ```
 
 Personal screenshots, generated Outputs, Logs, virtual environments, Python caches and other runtime files are ignored by Git.
+
+## How to Cite?
+
+If you use MacadamRoutePlanner in your research, please cite it using the following BibTeX entry:
+
+```bibtex
+@misc{softwareMacadamRoutePlanner:2026,
+  title = {MacadamRoutePlanner: Optimized walking routes from Macadam screenshots using coin and step goals},
+  author = {Breno Farias da Silva},
+  year = {2026},
+  howpublished = {https://github.com/BrenoFariasdaSilva/MacadamRoutePlanner},
+  note = {Accessed on October 5, 2026}
+}
+```
+
+Additionally, a `main.bib` file is available in the root directory of this repository containing the BibTeX entry for this project.
+
+If you find this repository valuable, please don't forget to give it a ⭐ to show your support!
+
+Contributions are highly encouraged, whether by creating issues for feedback or submitting pull requests to improve the project.
