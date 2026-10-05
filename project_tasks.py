@@ -129,3 +129,43 @@ def run_command(arguments: list[str]) -> None:  # Propagate subprocess failures 
     subprocess.run(arguments, cwd=ROOT, check=True)  # Preserve native exit status and interactive input.
 
 
+def application_arguments(mode: str) -> list[str]:  # Translate Make inputs into one unambiguous CLI argument list.
+    """Apply documented ARGS precedence and preserve paths containing spaces."""
+
+    raw = os.environ.get("MACADAM_ARGS", "").strip()  # Read explicit arguments without shell expansion.
+    if raw:  # Treat ARGS as the complete explicit argument set.
+        tokens = [token[1:-1] if len(token) >= 2 and token[0] == token[-1] and token[0] in "\"'" else token for token in shlex.split(raw, posix=False)]  # Preserve Windows backslashes and remove balanced outer quotes.
+        result = []  # Assemble path-aware arguments for the application parser.
+        index = 0  # Consume each argument exactly once.
+        while index < len(tokens):  # Support the documented unquoted multiword path examples.
+            token = tokens[index]  # Read the next option or value.
+            result.append(token)  # Preserve arbitrary non-path CLI arguments.
+            index += 1  # Advance past this token.
+            if token in {"--user", "--girlfriend", "--image", "--output", "--variants"}:  # Join only known path-valued arguments.
+                words = []  # Retain spaces within an explicit path.
+                while index < len(tokens) and not tokens[index].startswith("--"):  # Stop at the next application option.
+                    words.append(tokens[index])  # Preserve path characters without filesystem guessing.
+                    index += 1  # Consume this path component.
+                if words:  # Leave missing values for argparse to diagnose.
+                    result.append(" ".join(words))  # Pass one complete path argument.
+        if any(token == "--mode" or token.startswith("--mode=") for token in result):  # The chosen Make target owns mode selection.
+            raise ValueError("Do not supply --mode in ARGS; select run-single or run-couple")  # Reject contradictory mode overrides.
+        return ["--mode", mode, *result]  # Ignore all other Make run variables when ARGS is supplied.
+    result = ["--mode", mode]  # Force the target's mode independently of screenshot count.
+    names = ("IMAGE", "COINS", "STEPS") if mode == "single" else ("USER_IMAGE", "GIRLFRIEND_IMAGE", "STEPS", "MINIMUM")  # Keep variable semantics distinct.
+    incompatible = ("USER_IMAGE", "GIRLFRIEND_IMAGE", "MINIMUM") if mode == "single" else ("IMAGE", "COINS")  # Detect mistaken mode-specific variables.
+    if any(os.environ.get("MACADAM_" + name, "").strip() for name in incompatible):  # Never silently discard a routing requirement.
+        raise ValueError(f"Variables {', '.join(incompatible)} do not belong to {mode} mode")  # Explain the selected target's contract.
+    options = {"USER_IMAGE": "user", "GIRLFRIEND_IMAGE": "girlfriend"}  # Preserve the existing CLI option names.
+    for name in names:  # Pass each explicitly supplied path or objective unchanged.
+        value = os.environ.get("MACADAM_" + name, "").strip()  # Preserve filenames containing spaces.
+        if value:  # Keep omitted objectives absent rather than supplying defaults.
+            result.extend(("--" + options.get(name, name.lower()), value))  # Leave semantic validation to the application.
+    debug = os.environ.get("MACADAM_DEBUG", "0").strip()  # Keep debug behavior explicit.
+    if debug not in {"0", "1"}:  # Reject accidental truthy strings.
+        raise ValueError("DEBUG must be 0 or 1")  # Explain supported Make values.
+    if debug == "1":  # Preserve the existing debug switch.
+        result.append("--debug")  # Request existing pipeline diagnostics.
+    return result  # Let main.py own discovery and business logic.
+
+
