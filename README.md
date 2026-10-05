@@ -669,3 +669,38 @@ failure.json
 ```
 
 rather than claiming a valid route.
+
+### Route Optimization
+
+Every valid route:
+
+- Starts at HOME.
+- Ends at HOME.
+- Follows street-graph edges.
+- Uses actual graph shortest-path distances.
+- Reserves enough distance to return HOME when a distance cap exists.
+
+#### Step conversion
+
+The project uses:
+
+```text
+1 meter = 1.3 steps
+```
+
+Therefore:
+
+```text
+target_m = ceil(steps / 1.3)
+lower_m = target_m * 0.95
+upper_m = target_m * 1.05
+estimated_steps = ceil(actual_graph_distance_m * 1.3)
+```
+
+For 5000 steps:
+
+```text
+target = 3847 m
+preferred lower bound = 3654.65 m
+hard upper bound = 4039.35 m
+```
