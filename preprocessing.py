@@ -30,3 +30,17 @@ import numpy as np  # Manipulate masks.
 from settings import AnalysisError, Image, MapImage, Settings  # Share analysis contracts.
 
 
+def read_image(path: Path) -> Image:  # Load Unicode paths on Windows.
+    """
+    Decode a color image without modifying the input.
+
+    :param path: Source image path.
+    :return: Decoded color pixels.
+    """
+
+    image = cv2.imdecode(np.fromfile(path, dtype=np.uint8), cv2.IMREAD_COLOR)  # Decode file bytes.
+    if image is None or min(image.shape[:2]) < 200:  # Reject unusable screenshots.
+        raise AnalysisError(f"Unreadable or too-small screenshot: {path}")  # Explain the input failure.
+    return image  # Return valid image data.
+
+
