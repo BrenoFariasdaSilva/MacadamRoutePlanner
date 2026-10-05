@@ -261,3 +261,76 @@ Single mode:
 7. Optimizes a closed HOME-returning route.
 
 At least one of `COINS` or `STEPS` must be supplied.
+
+### Single-Account Mode
+
+Single mode supports three optimization objectives.
+
+#### Coins only
+
+```bash
+make run-single COINS=5
+```
+
+The application:
+
+1. Requires at least the requested number of distinct collectibles.
+2. Finds the minimum-distance HOME-returning route satisfying that requirement.
+3. Uses deterministic tie-breaking.
+4. Does not introduce an artificial step target or distance padding.
+
+Example with explicit screenshot:
+
+```bash
+make run-single IMAGE="../1. General.jpg" COINS=5
+```
+
+#### Steps only
+
+```bash
+make run-single STEPS=5000
+```
+
+The application:
+
+1. Converts the requested steps into a distance target.
+2. Respects the hard upper distance limit.
+3. Maximizes the number of distinct collectible pickups.
+4. Prefers routes closer to the requested distance target when collectible counts are equal.
+5. Then prefers less repeated walking and deterministic ordering.
+
+Explicit screenshot:
+
+```bash
+make run-single IMAGE="../1. General.jpg" STEPS=5000
+```
+
+#### Coins and steps
+
+```bash
+make run-single COINS=5 STEPS=5000
+```
+
+The application:
+
+1. Prioritizes satisfying the requested collectible minimum.
+2. Enforces the hard step/distance upper limit.
+3. Maximizes additional collectible pickups among feasible routes.
+4. Prefers routes closer to the requested step target.
+5. Then prefers less repeated walking and deterministic ordering.
+
+Explicit screenshot:
+
+```bash
+make run-single IMAGE="../1. General.jpg" COINS=5 STEPS=5000
+```
+
+Debug mode:
+
+```bash
+make run-single IMAGE="../1. General.jpg" COINS=5 STEPS=5000 DEBUG=1
+```
+
+Single-mode collectible markers are **blue only**.
+
+No girlfriend/shared ownership statistics or legend entries are generated in this mode.
