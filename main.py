@@ -67,3 +67,7 @@ class BackgroundColors:  # Preserve the template's terminal palette.
     BOLD = "\033[1m"  # Emphasize completion status.
 
 
+VERBOSE = False  # Keep diagnostic output opt-in.
+SOUND_FILE = ROOT / ".assets/Sounds/NotificationSound.wav"  # Reuse the template asset.
+
+
