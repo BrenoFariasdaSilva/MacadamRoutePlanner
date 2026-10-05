@@ -35,3 +35,31 @@ import numpy as np  # Calculate geometric and texture statistics.
 from settings import AnalysisError, Detection, Image, MapImage  # Share analysis records.
 
 
+def load_variants(manifest: Path) -> list[dict[str, Any]]:  # Validate replaceable visual definitions centrally.
+    """
+    Load a nonempty list of usable collectible-template definitions.
+
+    :param manifest: JSON variant manifest path.
+    :return: Validated variant definitions.
+    """
+
+    variants = json.loads(manifest.read_text(encoding="utf-8"))  # Read configured visual appearances.
+    if not isinstance(variants, list) or not variants:  # Require an active detector.
+        raise AnalysisError("No collectible variants configured")  # Reject an empty configuration.
+    names = set()  # Require unambiguous variant identities.
+    for item in variants:  # Validate every configured visual definition.
+        if not isinstance(item, dict) or not {"name", "image", "threshold", "scales", "anchor"}.issubset(item):  # Require a complete record.
+            raise AnalysisError("Each variant requires name, image, threshold, scales, and anchor")  # Explain the manifest schema.
+        if not isinstance(item["name"], str) or not item["name"] or item["name"] in names or not isinstance(item["image"], str):  # Validate unique names and asset paths.
+            raise AnalysisError("Variant names must be unique nonempty strings and image must be a path")  # Reject ambiguous configuration.
+        names.add(item["name"])  # Reserve the unique variant name.
+        values = [item["threshold"]] + (item["scales"] if isinstance(item["scales"], list) else []) + (item["anchor"] if isinstance(item["anchor"], list) else [])  # Collect numerical settings for validation.
+        if not all(isinstance(value, (int, float)) and math.isfinite(value) for value in values):  # Reject invalid and nonfinite values.
+            raise AnalysisError(f"Nonfinite or nonnumeric variant configuration: {item['name']}")  # Identify the invalid variant.
+        if not 0 < item["threshold"] <= 1 or not isinstance(item["scales"], list) or not item["scales"] or not all(0.1 <= value <= 5 for value in item["scales"]):  # Bound template scores and resampling dimensions.
+            raise AnalysisError(f"Invalid threshold or scales: {item['name']}")  # Reject unsafe matching configuration.
+        if not isinstance(item["anchor"], list) or len(item["anchor"]) != 2 or not all(0 <= value <= 1 for value in item["anchor"]):  # Keep the visual anchor inside the artwork.
+            raise AnalysisError(f"Invalid normalized anchor: {item['name']}")  # Explain the geometric configuration failure.
+    return variants  # Return complete usable definitions.
+
+
