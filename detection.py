@@ -24,11 +24,14 @@ Assumptions & Notes:
     - Variant templates describe artwork, never screenshot positions.
 """
 
-import atexit  # For playing a sound when the program finishes
-import datetime  # For getting the current date and time
-import os  # For running a command in the terminal
-import platform  # For getting the operating system name
-import sys  # For system-specific parameters and functions
-from colorama import Style  # For coloring the terminal
-from Logger import Logger  # For logging output to both terminal and file
-from pathlib import Path  # For handling file paths
+import json  # Load replaceable visual definitions.
+import math  # Validate finite template configuration.
+import wave  # Validate optional bundled notification audio.
+from dataclasses import asdict  # Preserve complete detector diagnostics.
+from pathlib import Path  # Resolve template assets.
+from typing import Any  # Annotate configurable visual records.
+import cv2  # Match templates and locate marker contours.
+import numpy as np  # Calculate geometric and texture statistics.
+from settings import AnalysisError, Detection, Image, MapImage  # Share analysis records.
+
+
