@@ -799,3 +799,53 @@ HOME detection:
 No fixed stored profile photograph is required.
 
 The application does not compare the profile against identity pixels stored in `.assets/`.
+
+### Collectible Detection
+
+Permanent collectible assets are stored in:
+
+```text
+.assets/Collectibles/
+```
+
+Required files include:
+
+```text
+mushroom.png
+m_coin.png
+variants.json
+```
+
+Both supported collectible appearances can run simultaneously.
+
+Detection uses:
+
+- Normalized grayscale template matching.
+- Multiple image scales.
+- Spatial suppression of duplicate detections.
+- Usable-map validation.
+- Street-graph association.
+
+Matching artwork inside excluded UI does not qualify as a map collectible.
+
+Future collectible variants can be added by placing a clean cropped asset under:
+
+```text
+.assets/Collectibles/
+```
+
+and appending a new manifest entry.
+
+Example:
+
+```json
+{
+  "name": "future_event",
+  "image": "future_event.png",
+  "threshold": 0.78,
+  "scales": [0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3],
+  "anchor": [0.5, 0.52]
+}
+```
+
+No routing rewrite is necessary for a newly configured collectible appearance.
