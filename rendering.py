@@ -46,3 +46,21 @@ LABEL_DARK = (30, 30, 30)  # Contrast badges against both map styles.
 LABEL_LIGHT = (255, 255, 255)  # Contrast digits and borders against dark details.
 
 
+def save_image(path: Path, image: Image) -> None:  # Write Unicode output paths safely.
+    """
+    Encode a PNG and verify that it can be decoded.
+
+    :param path: Destination PNG path.
+    :param image: Rendered image pixels.
+    :return: None.
+    """
+
+    success, encoded = cv2.imencode(".png", image)  # Encode without platform path limitations.
+    if not success:  # Reject a failed encoder result.
+        raise AnalysisError(f"Cannot encode output: {path}")  # Identify the failed artifact.
+    encoded.tofile(path)  # Write only the generated artifact.
+    decoded = cv2.imdecode(np.fromfile(path, dtype=np.uint8), cv2.IMREAD_COLOR)  # Reopen the actual written file.
+    if decoded is None or decoded.shape != image.shape:  # Verify the artifact is readable.
+        raise AnalysisError(f"Output verification failed: {path}")  # Report an unusable generated image.
+
+
