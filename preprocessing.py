@@ -24,11 +24,9 @@ Assumptions & Notes:
     - Roads are bright neutral paths; unsupported map styles fail explicitly.
 """
 
-import atexit  # For playing a sound when the program finishes
-import datetime  # For getting the current date and time
-import os  # For running a command in the terminal
-import platform  # For getting the operating system name
-import sys  # For system-specific parameters and functions
-from colorama import Style  # For coloring the terminal
-from Logger import Logger  # For logging output to both terminal and file
-from pathlib import Path  # For handling file paths
+from pathlib import Path  # Accept filesystem inputs.
+import cv2  # Perform image segmentation.
+import numpy as np  # Manipulate masks.
+from settings import AnalysisError, Image, MapImage, Settings  # Share analysis contracts.
+
+
