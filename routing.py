@@ -102,6 +102,83 @@ def route_length(graph: nx.Graph, path: list[tuple[int, int]]) -> float:  # Meas
     return sum(graph[a][b]["weight"] for a, b in zip(path, path[1:]))  # Include repeated walking without duplicated rewards.
 
 
+def optimize_route(graph: nx.Graph, home: tuple[int, int], locations: list[dict[str, Any]], steps: int, minimum: int, settings: Settings) -> dict[str, Any]:  # Search for a bounded closed street walk.
+    """
+    Optimize collectible reward while preserving return-HOME feasibility.
+
+    :param graph: HOME-connected metric graph.
+    :param home: Snapped start and finish node.
+    :param locations: Classified physical collectible sites.
+    :param steps: Requested step target.
+    :param minimum: Required combined account opportunities.
+    :param settings: Deterministic beam width.
+    :return: Explicit route, statistics, and unmet requirements.
+    """
+
+    target = math.ceil(steps / 1.3)  # Apply the requested integer-ceiling conversion.
+    lower, upper = target * 0.95, target * 1.05  # Preserve the requested tolerance interval.
+    terminals = list(dict.fromkeys([home] + [item["node"] for item in locations]))  # Deduplicate graph destinations.
+    distances, paths = {}, {}  # Cache weighted metric closure.
+    for node in terminals:  # Solve each source once.
+        distances[node], paths[node] = nx.single_source_dijkstra(graph, node, weight="weight")  # Use real street distances.
+    masks = {}  # Cache incidental pickups along shortest-path legs.
+    for source in terminals:  # Inspect every terminal-to-terminal leg.
+        for destination in terminals:  # Include pickups passed en route.
+            visited = set(paths[source][destination])  # Index street nodes on this leg.
+            masks[source, destination] = sum(1 << index for index, item in enumerate(locations) if item["node"] in visited)  # Count each physical site once.
+    rewards = {}  # Cache combined account opportunity counts.
+    beam = [(0.0, (home,), masks[home, home])]  # Initialize the fixed starting point.
+    completed = []  # Retain best valid closed alternatives.
+    for _ in range(len(terminals)):  # Bound expansions by newly visited collectible terminals.
+        next_states = {}  # Deduplicate equivalent partial states.
+        for cost, stops, mask in beam:  # Extend only HOME-returnable partial routes.
+            last = stops[-1]  # Read the current street terminal.
+            closed_mask = mask | masks[last, home]  # Include return-leg opportunities.
+            total = cost + distances[last][home]  # Reserve the mandatory return length.
+            if total <= upper and total > 0:  # Retain valid nonempty closed walks.
+                reward = rewards.setdefault(closed_mask, sum(item["reward"] for index, item in enumerate(locations) if closed_mask & (1 << index)))  # Count account opportunities independently.
+                completed.append((reward, total >= lower, -abs(total - target), stops + (home,), closed_mask))  # Prefer coverage and target proximity.
+            for node in terminals[1:]:  # Consider unvisited reward destinations.
+                if node in stops:  # Avoid redundant terminal ordering.
+                    continue  # Keep repetitions only where shortest paths require them.
+                new_mask = mask | masks[last, node]  # Include incidental collectible visits.
+                if new_mask == mask:  # Do not add rewardless terminal visits during search.
+                    continue  # Leave target-distance extension to the final phase.
+                new_cost = cost + distances[last][node]  # Measure the additional walking leg.
+                if new_cost + distances[node][home] > upper:  # Reserve an admissible return to HOME.
+                    continue  # Reject over-budget partial routes immediately.
+                key = (node, new_mask)  # Identify equivalent reward and position states.
+                if key not in next_states or new_cost < next_states[key][0]:  # Retain the shorter equivalent partial route.
+                    next_states[key] = (new_cost, stops + (node,), new_mask)  # Store the improved partial state.
+        if not next_states:  # Stop when no additional reward fits.
+            break  # Finish the bounded search.
+        beam = sorted(next_states.values(), key=lambda state: (-sum(item["reward"] for index, item in enumerate(locations) if state[2] & (1 << index)), state[0], state[1]))[:settings.beam_width]  # Bound deterministic reward-first search.
+        completed = sorted(completed, reverse=True)[:settings.beam_width]  # Bound retained closed alternatives.
+    if completed:  # Select the strongest discovered closed route.
+        _, _, _, stops, _ = max(completed)  # Prioritize reward, interval membership, and target closeness.
+        walk = [home]  # Expand the metric closure into actual graph steps.
+        for a, b in zip(stops, stops[1:]):  # Expand each selected terminal leg.
+            walk.extend(paths[a][b][1:])  # Preserve the full street-following geometry.
+    else:  # Permit a distance-only walk when no collectible terminal fits.
+        walk = [home]  # Start a valid alternative search from HOME.
+    walk = extend_distance(graph, walk, home, lower, upper, target)  # Prefer a near-target alternative without exceeding the cap.
+    distance = route_length(graph, walk)  # Independently recompute final walking distance.
+    if len(walk) < 2 or walk[0] != home or walk[-1] != home or distance > upper + 1e-7:  # Enforce final invariants.
+        raise AnalysisError(f"No nonempty HOME-returning route found within {upper:.2f} m")  # Report a failed bounded search.
+    visited = set(walk)  # Deduplicate physical visits.
+    selected = [index for index, item in enumerate(locations) if item["node"] in visited]  # Include incidental final-route pickups.
+    counts = {kind: sum(locations[index]["kind"] == kind for index in selected) for kind in ("user", "girlfriend", "shared")}  # Count category-specific physical sites.
+    opportunities = counts["user"] + counts["girlfriend"] + 2 * counts["shared"]  # Count shared benefit for both people.
+    unmet = []  # Explicitly identify every unmet request.
+    if distance < lower:  # Distinguish a valid shorter alternative from full satisfaction.
+        unmet.append(f"Distance below preferred lower bound {lower:.2f} m")  # Report the distance shortfall.
+    if opportunities < minimum:  # Preserve the requested collectible minimum.
+        unmet.append(f"Only {opportunities} account opportunities; requested {minimum}")  # Report the reward shortfall.
+    unique_edges = {frozenset((a, b)) for a, b in zip(walk, walk[1:])}  # Measure unavoidable and avoidable repeated walking.
+    unique_length = sum(graph[a][b]["weight"] for edge in unique_edges for a, b in [tuple(edge)])  # Count each street edge once.
+    return {"walk": walk, "selected": selected, "distance_m": distance, "estimated_steps": math.ceil(distance * 1.3), "target_m": target, "lower_m": lower, "upper_m": upper, "user_only": counts["user"], "girlfriend_only": counts["girlfriend"], "shared": counts["shared"], "user_opportunities": counts["user"] + counts["shared"], "girlfriend_opportunities": counts["girlfriend"] + counts["shared"], "distinct_locations": len(selected), "route_nodes": len(visited), "intersections": sum(graph.degree[node] >= 3 for node in visited), "repeated_distance_m": distance - unique_length, "unmet": unmet, "optimizer": "bounded deterministic beam search; global optimality not guaranteed"}  # Return complete auditable statistics.
+
+
 def extend_distance(graph: nx.Graph, walk: list[tuple[int, int]], home: tuple[int, int], lower: float, upper: float, target: float) -> list[tuple[int, int]]:  # Prefer useful street cycles over repeated distance padding.
     """
     Add a supported cycle or bounded HOME excursion when below target.
