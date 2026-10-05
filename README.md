@@ -704,3 +704,44 @@ target = 3847 m
 preferred lower bound = 3654.65 m
 hard upper bound = 4039.35 m
 ```
+
+### Single-account optimization
+
+#### Coins only
+
+Primary objective:
+
+```text
+minimum total graph distance satisfying requested collectible count
+```
+
+#### Steps only
+
+Priority:
+
+```text
+1. Respect hard upper distance limit.
+2. Maximize collectible count.
+3. Prefer target-distance proximity.
+4. Reduce repeated walking.
+5. Deterministic ordering.
+```
+
+#### Coins + steps
+
+Priority:
+
+```text
+1. Satisfy collectible minimum.
+2. Respect hard upper distance limit.
+3. Maximize collectible count.
+4. Prefer target-distance proximity.
+5. Reduce repeated walking.
+6. Deterministic ordering.
+```
+
+The single-account search performs exact shortest-state exploration over collectible sets/current terminals for pickup feasibility and minimum pickup-loop distances.
+
+Its state space is exponential in the number of collectible terminals, so unusually large visible collectible sets may require substantial time or memory.
+
+Secondary target-distance refinement is bounded and does not prove a globally closest possible distance.
