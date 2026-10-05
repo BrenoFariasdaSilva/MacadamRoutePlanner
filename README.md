@@ -1091,3 +1091,13 @@ We thank the following people who contributed to this project:
     </td>
   </tr>
 </table>
+
+## License
+
+### Apache License 2.0
+
+This project is licensed under the [Apache License 2.0](LICENSE).
+
+This license permits use, modification, distribution, and sublicensing of the code for private and commercial purposes, provided that the required copyright notices, license terms, and disclaimer are preserved.
+
+For complete terms, see the [LICENSE](LICENSE) file.
