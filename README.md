@@ -136,3 +136,23 @@ The application does **not** require:
    git clone https://github.com/BrenoFariasdaSilva/MacadamRoutePlanner.git
    cd MacadamRoutePlanner
    ```
+
+## Installation
+
+### Python
+
+The recommended installation method uses the included Makefile.
+
+```bash
+make setup
+```
+
+or:
+
+```bash
+make install
+```
+
+The setup process creates the project virtual environment when necessary and installs the dependencies from `requirements.txt`.
+
+No manual virtual-environment activation is required for normal Makefile usage.
