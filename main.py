@@ -265,3 +265,15 @@ def run_pipeline(arguments: argparse.Namespace, directory: Path) -> dict[str, An
     return result  # Report final validated statistics to the CLI.
 
 
+def play_sound() -> None:  # Adapt the existing template's completion behavior.
+    """
+    Play the existing completion sound on supported non-Windows systems.
+
+    :return: None.
+    """
+
+    command = {"Darwin": "afplay", "Linux": "aplay"}.get(platform.system())  # Preserve the template's Windows exclusion.
+    if command and shutil.which(command) and SOUND_FILE.is_file():  # Require an available player and sound asset.
+        subprocess.run([command, str(SOUND_FILE)], check=True)  # Use argument-safe process execution.
+
+
