@@ -88,3 +88,33 @@ def thin_mask(mask: Image) -> Image:  # Avoid an extra image-processing dependen
     return pixels[1:-1, 1:-1] * 255  # Return unpadded binary skeleton.
 
 
+def corridor_lengths(graph: nx.Graph) -> list[float]:  # Measure topology-defined street sections.
+    """
+    Measure nonbranching corridors between graph junctions.
+
+    :param graph: Pixel street graph.
+    :return: Junction-to-junction pixel lengths.
+    """
+
+    lengths = []  # Collect unique corridor measurements.
+    visited = set()  # Avoid measuring undirected corridors twice.
+    for start in graph:  # Begin only at structural endpoints and intersections.
+        if graph.degree[start] == 2:  # Ignore intermediate pixels.
+            continue  # Move to a structural node.
+        for neighbor in graph[start]:  # Trace each incident street corridor.
+            edge = frozenset((start, neighbor))  # Use orientation-independent edge identity.
+            if edge in visited:  # Avoid duplicated measurements.
+                continue  # Continue with another corridor.
+            previous, current = start, neighbor  # Initialize corridor traversal.
+            length = graph[start][neighbor]["pixels"]  # Include the initial street step.
+            visited.add(edge)  # Record the measured edge.
+            while graph.degree[current] == 2:  # Follow nonbranching street geometry.
+                following = next(node for node in graph[current] if node != previous)  # Advance without reversing.
+                visited.add(frozenset((current, following)))  # Mark the next corridor edge.
+                length += graph[current][following]["pixels"]  # Accumulate actual centerline length.
+                previous, current = current, following  # Advance the traversal state.
+            if graph.degree[start] >= 3 and graph.degree[current] >= 3:  # Calibrate only intersection-to-intersection sections.
+                lengths.append(length)  # Retain a genuine block candidate.
+    return lengths  # Return measured block geometry.
+
+
