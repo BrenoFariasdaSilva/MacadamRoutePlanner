@@ -24,11 +24,14 @@ Assumptions & Notes:
     - Bounded search is heuristic and never claims global optimality.
 """
 
-import atexit  # For playing a sound when the program finishes
-import datetime  # For getting the current date and time
-import os  # For running a command in the terminal
-import platform  # For getting the operating system name
-import sys  # For system-specific parameters and functions
-from colorama import Style  # For coloring the terminal
-from Logger import Logger  # For logging output to both terminal and file
-from pathlib import Path  # For handling file paths
+import heapq  # Search distance-ordered collectible states.
+import math  # Convert step budgets and compare distances.
+from typing import Any  # Describe JSON-compatible route records.
+import networkx as nx  # Compute actual street shortest paths.
+import numpy as np  # Transform account marker positions.
+from numpy.typing import NDArray  # Annotate homographies.
+from registration import transform_points  # Share projective geometry.
+from settings import AnalysisError, Image, MapImage, Settings  # Reuse account records.
+from streets import snap_point  # Associate collectibles with streets.
+
+
