@@ -368,3 +368,79 @@ Couple-mode colors are:
 - **Green:** shared collectible.
 
 A shared physical collectible can use different artwork in each screenshot. Matching is based on aligned physical map position rather than icon identity.
+
+### Input Discovery
+
+#### Single mode
+
+Single-account discovery uses:
+
+```text
+Inputs/Single/
+```
+
+Exactly one readable screenshot must be present.
+
+Supported image extensions include:
+
+- `.png`
+- `.jpg`
+- `.jpeg`
+
+Matching is case-insensitive.
+
+If zero or multiple candidate images are found, execution fails clearly and reports the discovered filenames.
+
+An explicit `IMAGE` value overrides discovery:
+
+```bash
+make run-single IMAGE="path/to/screenshot.jpg" COINS=5
+```
+
+#### Couple mode
+
+Couple discovery scans the top level of:
+
+```text
+Inputs/
+```
+
+Exactly two valid screenshots are expected.
+
+Recommended filenames:
+
+```text
+user.jpg
+girlfriend.jpeg
+```
+
+Supported role tokens include:
+
+User:
+
+- `user`
+- `me`
+- `mine`
+
+Girlfriend:
+
+- `girlfriend`
+- `gf`
+
+Examples:
+
+```text
+user-2026.PNG
+gf_current.jpeg
+```
+
+Role identification is case-insensitive and token-based.
+
+The application never silently assigns ownership based only on alphabetical ordering.
+
+If ownership cannot be determined safely:
+
+- Interactive execution asks for the assignment.
+- Noninteractive execution fails and requests explicit paths or clearer filenames.
+
+Explicit `USER_IMAGE` and `GIRLFRIEND_IMAGE` values bypass discovery.
