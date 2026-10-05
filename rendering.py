@@ -202,3 +202,31 @@ def draw_route(canvas: Image, graph: nx.Graph, result: dict[str, Any], locations
 
 
 
+def add_statistics(canvas: Image, result: dict[str, Any], estimated: bool) -> Image:  # Append statistics without hiding streets.
+    """
+    Append a readable legend and summary below the map.
+
+    :param canvas: Completed map image.
+    :param result: Validated route statistics.
+    :param estimated: Whether block-based calibration was used.
+    :return: Map with an appended statistics panel.
+    """
+
+    scale = canvas.shape[1] / 800  # Scale typography to output width.
+    panel = np.full((round(205 * scale), canvas.shape[1], 3), 255, dtype=np.uint8)  # Reserve a separate summary area.
+    single = result.get("mode") == "single"  # Keep legends and statistics meaningful for the selected account mode.
+    if single:  # Reuse the same panel without fictional second-account counts.
+        budget = f"Target: {result['target_m']:.0f} m | Maximum: {result['upper_m']:.1f} m" if result["target_m"] is not None else "Coins only: minimum walking; no step target or cap"  # Distinguish the objective visibly.
+        rows = [f"{'Estimated ' if estimated else ''}distance: {result['distance_m']:.0f} m | {result['estimated_steps']} steps", f"Single | Coins: {result['collectibles_collected']}/{result['collectibles_reachable']} reachable | Required: {result['requested_coins'] if result['requested_coins'] is not None else 'none'}", f"Physical sites: {result['distinct_locations']} | Repeated walking: {result['repeated_distance_m']:.0f} m", budget, "VALID ALTERNATIVE: unmet request; see route.json" if result["unmet"] else "HOME start/finish | Numbers: walking order; /: repeat visits"]  # Report only single-account statistics.
+    else:  # Preserve the existing couple panel exactly.
+        rows = [f"{'Estimated ' if estimated else ''}distance: {result['distance_m']:.0f} m | {result['estimated_steps']} steps", f"User: {result['user_opportunities']} | Girlfriend: {result['girlfriend_opportunities']} | Shared: {result['shared']}", f"Physical sites: {result['distinct_locations']} | Repeated walking: {result['repeated_distance_m']:.0f} m", f"Target: {result['target_m']:.0f} m | Maximum: {result['upper_m']:.1f} m", "VALID ALTERNATIVE: unmet request; see route.json" if result["unmet"] else "HOME start/finish | Numbers: walking order; /: repeat visits"]  # Report benefits and limitations.
+    for index, text in enumerate(rows):  # Render summary text in separate rows.
+        cv2.putText(panel, text, (round(15 * scale), round((28 + index * 28) * scale)), cv2.FONT_HERSHEY_SIMPLEX, 0.52 * scale, (35, 35, 35), max(1, round(scale)), cv2.LINE_AA)  # Preserve readable typography.
+    legend = (("user", "Single-account collectibles"),) if single else (("user", "User only"), ("girlfriend", "Girlfriend only"), ("shared", "Shared"))  # Keep blue as the sole single-account color.
+    for index, (kind, label) in enumerate(legend):  # Explain category colors consistently.
+        x = round((25 + index * 265) * scale)  # Space legend items evenly.
+        cv2.circle(panel, (x, round(177 * scale)), round(8 * scale), COLORS[kind], -1, cv2.LINE_AA)  # Display the exact category color.
+        cv2.putText(panel, label, (x + round(18 * scale), round(184 * scale)), cv2.FONT_HERSHEY_SIMPLEX, 0.5 * scale, (35, 35, 35), max(1, round(scale)), cv2.LINE_AA)  # Label ownership categories.
+    return np.vstack((canvas, panel))  # Avoid covering map geometry with statistics.
+
+
