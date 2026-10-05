@@ -231,3 +231,5 @@ def main() -> int:  # Dispatch the small portable Make interface.
         return 2  # Return a nonzero task status.
 
 
+if __name__ == "__main__":  # Keep importing this module free of task execution.
+    sys.exit(main())  # Run only the explicitly requested project command.
