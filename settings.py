@@ -24,11 +24,10 @@ Assumptions & Notes:
     - Pixel tolerances refer to the normalized analysis width.
 """
 
-import atexit  # For playing a sound when the program finishes
-import datetime  # For getting the current date and time
-import os  # For running a command in the terminal
-import platform  # For getting the operating system name
-import sys  # For system-specific parameters and functions
-from colorama import Style  # For coloring the terminal
-from Logger import Logger  # For logging output to both terminal and file
-from pathlib import Path  # For handling file paths
+from dataclasses import dataclass, field  # Define shared records.
+from pathlib import Path  # Resolve project assets.
+from typing import Any  # Describe heterogeneous diagnostics.
+import numpy as np  # Represent image arrays.
+from numpy.typing import NDArray  # Annotate numerical arrays.
+
+
