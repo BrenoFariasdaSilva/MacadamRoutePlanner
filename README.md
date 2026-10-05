@@ -745,3 +745,21 @@ The single-account search performs exact shortest-state exploration over collect
 Its state space is exponential in the number of collectible terminals, so unusually large visible collectible sets may require substantial time or memory.
 
 Secondary target-distance refinement is bounded and does not prove a globally closest possible distance.
+
+### Couple-mode optimization
+
+Couple mode caches NetworkX weighted Dijkstra paths between HOME and collectible terminals.
+
+Its bounded beam search considers:
+
+- User opportunities.
+- Girlfriend opportunities.
+- Shared rewards.
+- Route distance.
+- Return-to-HOME feasibility.
+- Repeated traversal.
+- Step/distance target.
+
+Every partial route reserves enough distance to return HOME.
+
+Beam width is currently bounded to control computation, so couple optimization is heuristic rather than a proof of global reward optimality.
