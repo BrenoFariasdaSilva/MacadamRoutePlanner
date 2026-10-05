@@ -59,3 +59,15 @@ class Detection:  # Describe one image-local collectible.
     confidence: float  # Record template similarity.
 
 
+@dataclass  # Carry reusable preprocessing results.
+class MapImage:  # Store a normalized screenshot and masks.
+    image: Image  # Retain normalized color pixels.
+    usable: Image  # Exclude interface overlays.
+    roads: Image  # Record directly observed street pixels.
+    original: Image  # Preserve original-resolution rendering.
+    home: Point = (0.0, 0.0)  # Set after marker detection.
+    home_box: tuple[int, int, int, int] = (0, 0, 0, 0)  # Store excluded marker geometry.
+    detections: list[Detection] = field(default_factory=list)  # Store independent account detections.
+    diagnostics: dict[str, Any] = field(default_factory=dict)  # Retain quantitative evidence.
+
+
