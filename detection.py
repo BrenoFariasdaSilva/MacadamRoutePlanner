@@ -77,6 +77,46 @@ def detect_home(scene: MapImage) -> None:  # Locate the photograph marker withou
     scene.diagnostics.update(home=scene.home, home_box=scene.home_box)  # Preserve the independently detected account position.
 
 
+def detect_collectibles(scene: MapImage, manifest: Path) -> None:  # Load all configured visual variants.
+    """
+    Find multi-scale collectibles while excluding complete interface regions.
+
+    :param scene: Prepared account screenshot to update.
+    :param manifest: JSON list of variant definitions.
+    :return: None.
+    """
+
+    variants = load_variants(manifest)  # Read validated centralized template definitions.
+    edges = cv2.cvtColor(scene.image, cv2.COLOR_BGR2GRAY)  # Match artwork luminance independently of hue.
+    candidates = []  # Collect template responses before suppression.
+    rejected = []  # Preserve excluded UI and duplicate evidence.
+    for variant in variants:  # Activate all configured appearances simultaneously.
+        template = read_template(manifest.parent / variant["image"])  # Read a small reusable icon asset.
+        threshold = float(variant["threshold"])  # Use the variant's documented similarity floor.
+        for scale in variant["scales"]:  # Tolerate device rendering and icon-size differences.
+            resized = cv2.resize(template, None, fx=float(scale), fy=float(scale))  # Scale visual artwork only.
+            h, w = resized.shape[:2]  # Measure candidate bounds.
+            if h >= edges.shape[0] or w >= edges.shape[1]:  # Avoid unsupported template dimensions.
+                continue  # Skip an oversized scale.
+            response = cv2.matchTemplate(edges, cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY), cv2.TM_CCOEFF_NORMED)  # Correlate normalized artwork structure.
+            peaks = (response >= threshold) & (response == cv2.dilate(response, np.ones((11, 11), np.uint8)))  # Retain local maxima.
+            for y, x in zip(*np.where(peaks), strict=True):  # Process each local response peak.
+                point = (float(x + w * variant["anchor"][0]), float(y + h * variant["anchor"][1]))  # Apply the artwork's map anchor.
+                item = Detection(point, (int(x), int(y), w, h), variant["name"], float(response[y, x]))  # Preserve variant confidence.
+                if np.mean(scene.usable[y:y + h, x:x + w] > 0) < 0.90:  # Allow small crop-padding overlap while rejecting interface artwork.
+                    rejected.append({"variant": item.variant, "point": point, "reason": "interface", "confidence": item.confidence})  # Record the rejected map instance.
+                else:  # Keep candidates within the usable map.
+                    candidates.append(item)  # Defer duplicate suppression until all scales finish.
+    accepted = []  # Retain the strongest response at each location.
+    for item in sorted(candidates, key=lambda entry: -entry.confidence):  # Prefer the most reliable scale.
+        if all(np.linalg.norm(np.subtract(item.point, other.point)) > min(item.box[2], other.box[2]) * 0.6 for other in accepted):  # Suppress overlapping scales and variants.
+            accepted.append(item)  # Preserve a unique collectible.
+    scene.detections = sorted(accepted, key=lambda item: (item.point[1], item.point[0]))  # Ensure deterministic traversal order.
+    scene.diagnostics["collectibles"] = {variant["name"]: sum(item.variant == variant["name"] for item in accepted) for variant in variants}  # Report counts independently.
+    scene.diagnostics["rejected_collectibles"] = rejected  # Preserve UI rejection evidence.
+    scene.diagnostics["detections"] = [asdict(item) for item in scene.detections]  # Preserve variant confidences and bounds for auditing.
+
+
 def load_variants(manifest: Path) -> list[dict[str, Any]]:  # Validate replaceable visual definitions centrally.
     """
     Load a nonempty list of usable collectible-template definitions.
