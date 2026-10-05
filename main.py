@@ -59,3 +59,11 @@ from settings import ROOT, AnalysisError, Settings  # Share configuration and fa
 from streets import build_graph, repair_roads, snap_point  # Construct and calibrate street topology.
 
 
+class BackgroundColors:  # Preserve the template's terminal palette.
+    CYAN = "\033[96m"  # Color path and timing values.
+    GREEN = "\033[92m"  # Color successful execution messages.
+    YELLOW = "\033[93m"  # Color explicit alternative-route notices.
+    RED = "\033[91m"  # Color rejected analysis messages.
+    BOLD = "\033[1m"  # Emphasize completion status.
+
+
