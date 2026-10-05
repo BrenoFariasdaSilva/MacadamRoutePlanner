@@ -36,3 +36,18 @@ type Image = NDArray[np.uint8]  # Represent byte images.
 type Point = tuple[float, float]  # Store analysis coordinates.
 
 
+@dataclass(frozen=True)  # Keep thresholds consistent across phases.
+class Settings:  # Centralize documented analysis assumptions.
+    width: int = 800  # Normalize processing cost independently of input size.
+    white_saturation: int = 8  # Exclude the pink location halo whose observed saturation reaches twelve.
+    white_value: int = 242  # Retain bright street interiors.
+    feature_ratio: float = 0.55  # Reject ambiguous repeated street-label descriptors.
+    ransac_pixels: float = 4.0  # Allow antialiasing and label-rendering differences.
+    minimum_inliers: int = 10  # Require redundancy beyond four homography points.
+    minimum_street_agreement: float = 0.8  # Require bidirectional road support inside shared stable map coverage.
+    match_tolerance: float = 22.0  # Keep matching below typical collectible spacing.
+    snap_tolerance: float = 45.0  # Allow symbol displacement without crossing a block.
+    block_meters: float = 100.0  # Use the user's approximate intersection calibration.
+    beam_width: int = 256  # Bound the deterministic route search.
+
+
