@@ -26,7 +26,6 @@ Optimized walking routes from Macadam screenshots using collectible and step goa
 ![GitHub Contributors](https://img.shields.io/github/contributors/BrenoFariasdaSilva/MacadamRoutePlanner)
 ![GitHub Created At](https://img.shields.io/github/created-at/BrenoFariasdaSilva/MacadamRoutePlanner)
 ![WakaTime](https://wakatime.com/badge/github/BrenoFariasdaSilva/MacadamRoutePlanner.svg)
-[![GitHub Repository Size](https://img.shields.io/github/repo-size/BrenoFariasdaSilva/MacadamRoutePlanner)](https://github.com/BrenoFariasdaSilva/MacadamRoutePlanner)
 [![Open Issues](https://img.shields.io/github/issues/BrenoFariasdaSilva/MacadamRoutePlanner)](https://github.com/BrenoFariasdaSilva/MacadamRoutePlanner/issues)
 [![Closed Issues](https://img.shields.io/github/issues-closed/BrenoFariasdaSilva/MacadamRoutePlanner)](https://github.com/BrenoFariasdaSilva/MacadamRoutePlanner/issues?q=is%3Aissue+is%3Aclosed)
 [![Open Pull Requests](https://img.shields.io/github/issues-pr/BrenoFariasdaSilva/MacadamRoutePlanner)](https://github.com/BrenoFariasdaSilva/MacadamRoutePlanner/pulls)
