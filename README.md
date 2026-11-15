@@ -31,9 +31,30 @@ Optimized walking routes from Macadam screenshots using collectible and step goa
 
 <div align="center">
 
-![RepoBeats Statistics](https://repobeats.axiom.co/api/embed/e30a84803d82f382f9d6d313e3b9a20dd494428b.svg "Repobeats analytics image")
+![GitHub Code Size in Bytes](https://img.shields.io/github/languages/code-size/BrenoFariasdaSilva/MacadamRoutePlanner)
+![GitHub Commits](https://img.shields.io/github/commit-activity/t/BrenoFariasdaSilva/MacadamRoutePlanner/main)
+![GitHub Last Commit](https://img.shields.io/github/last-commit/BrenoFariasdaSilva/MacadamRoutePlanner)
+![GitHub Forks](https://img.shields.io/github/forks/BrenoFariasdaSilva/MacadamRoutePlanner)
+![GitHub Language Count](https://img.shields.io/github/languages/count/BrenoFariasdaSilva/MacadamRoutePlanner)
+![GitHub License](https://img.shields.io/github/license/BrenoFariasdaSilva/MacadamRoutePlanner)
+![GitHub Stars](https://img.shields.io/github/stars/BrenoFariasdaSilva/MacadamRoutePlanner)
+![GitHub Contributors](https://img.shields.io/github/contributors/BrenoFariasdaSilva/MacadamRoutePlanner)
+![GitHub Created At](https://img.shields.io/github/created-at/BrenoFariasdaSilva/MacadamRoutePlanner)
+![wakatime](https://wakatime.com/badge/github/BrenoFariasdaSilva/MacadamRoutePlanner.svg)
+[![GitHub Repository Size](https://img.shields.io/github/repo-size/BrenoFariasdaSilva/MacadamRoutePlanner)](https://github.com/BrenoFariasdaSilva/MacadamRoutePlanner)
+[![Open Issues](https://img.shields.io/github/issues/BrenoFariasdaSilva/MacadamRoutePlanner)](https://github.com/BrenoFariasdaSilva/MacadamRoutePlanner/issues)
+[![Closed Issues](https://img.shields.io/github/issues-closed/BrenoFariasdaSilva/MacadamRoutePlanner)](https://github.com/BrenoFariasdaSilva/MacadamRoutePlanner/issues?q=is%3Aissue+is%3Aclosed)
+[![Open Pull Requests](https://img.shields.io/github/issues-pr/BrenoFariasdaSilva/MacadamRoutePlanner)](https://github.com/BrenoFariasdaSilva/MacadamRoutePlanner/pulls)
+[![Closed Pull Requests](https://img.shields.io/github/issues-pr-closed/BrenoFariasdaSilva/MacadamRoutePlanner)](https://github.com/BrenoFariasdaSilva/MacadamRoutePlanner/pulls?q=is%3Apr+is%3Aclosed)
+[![Monthly Commits](https://img.shields.io/github/commit-activity/m/BrenoFariasdaSilva/MacadamRoutePlanner/main)](https://github.com/BrenoFariasdaSilva/MacadamRoutePlanner/commits)
+[![Merged PRs](https://img.shields.io/github/issues-search/BrenoFariasdaSilva/MacadamRoutePlanner?query=is%3Apr%20is%3Amerged&label=merged%20PRs&color=blue)](https://github.com/BrenoFariasdaSilva/MacadamRoutePlanner/pulls?q=is%3Apr+is%3Amerged)
+![Language](https://img.shields.io/badge/Language-Python-3776AB)
+![Purpose](https://img.shields.io/badge/Purpose-Route%20Planning-2b7c7c)
+
+![Repobeats Statistics](https://repobeats.axiom.co/api/embed/e30a84803d82f382f9d6d313e3b9a20dd494428b.svg)
 
 </div>
+
 
 ## Table of Contents
 
